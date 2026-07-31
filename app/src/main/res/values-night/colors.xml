@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#79C7F2</color>
+    <color name="primaryDark">#0B2E42</color>
+    <color name="accent">#F5A6C5</color>
+    <color name="background">#121212</color>
+    <color name="surface">#242424</color>
+    <color name="surface_variant">#2C2C2C</color>
+    <color name="on_primary">#002B3D</color>
+    <color name="on_surface_high">#DEFFFFFF</color>
+    <color name="on_surface_medium">#B3FFFFFF</color>
+    <color name="on_surface_disabled">#61FFFFFF</color>
+    <color name="divider">#1FFFFFFF</color>
+    <color name="outline">#B3FFFFFF</color>
+    <color name="error">#FF8A9D</color>
+    <color name="error_surface">#3B2026</color>
+    <color name="success">#81C784</color>
+    <color name="warning">#FFD166</color>
+    <color name="state_pressed">#1FFFFFFF</color>
+    <color name="state_focused">#1FFFFFFF</color>
+    <color name="disabled_fill">#1FFFFFFF</color>
+    <color name="disabled_outline">#3DFFFFFF</color>
+    <color name="progress_track">#3D79C7F2</color>
+    <color name="disabled_text">@color/on_surface_disabled</color>
+</resources>

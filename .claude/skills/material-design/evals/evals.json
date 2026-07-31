@@ -1,0 +1,77 @@
+{
+  "skill_name": "material-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a settings page for my Android app using Jetpack Compose. I want it to follow Material Design 3 properly. The settings include: toggle for dark mode, toggle for notifications, a language selector (English, Chinese, Japanese), and a delete account button at the bottom. How should I structure this page and which components should I use?",
+      "expected_output": "A settings page design using M3 components: Switch for toggles (dark mode, notifications), Exposed Dropdown Menu or Radio Buttons for language selection, Outlined Button (destructive) for delete account. Page structure with Top App Bar, proper grouping with dividers or cards, correct button emphasis levels.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I need to set up a design token system for our web app. We're using React but want to use CSS custom properties so any framework can consume them. Can you help me define the color tokens and typography tokens following Material Design 3? Our brand color is #1B5E20 (dark green).",
+      "expected_output": "A CSS custom properties token system with three layers (reference, system, component). Full M3 color role mapping for #1B5E20 seed color, both light and dark themes. Typography tokens using M3 type scale.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our React app uses MUI v5 and we're designing a dark theme. I know MUI is based on Material Design 2 but we want to align with Material Design 3 color roles and surface hierarchy. What are the key differences in how M3 handles dark theme vs M2, and how should we map M3 surface container levels to MUI's theme?",
+      "expected_output": "Explanation of M3 dark theme principles: not pure black, surface container hierarchy. M3 color role mapping to MUI theme palette. Specific guidance on surface container token mapping.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm designing a data table for our enterprise admin panel using Ant Design. Can you help me pick the right column configuration and color scheme?",
+      "expected_output": "This should NOT trigger Material Design skill. The user is asking about Ant Design specifically. Should either decline to use Material Design guidance, or note that Ant Design is a different design system and ask if they want Material Design alignment.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Our app was built 3 years ago following Material Design 2 with Angular Material. The team wants to update the look and feel. We're not ready for a full M3 migration — we just want to fix the most outdated-looking parts. What should we focus on?",
+      "expected_output": "M2 maintenance mode: should use M2 concepts (primary/secondary palette, elevation with shadows, h1-h6 typography). Should NOT recommend M3 tonal palettes, surfaceContainer roles, or M3 type scales. Should provide M2-specific improvement suggestions.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "We're planning to migrate our Android app from Material Design 2 (MDC Views) to Material Design 3 (Jetpack Compose). What's the best approach — should we just rewrite all screens at once, or is there a phased strategy?",
+      "expected_output": "M2-to-M3 migration mode. Should provide a phased migration plan, note that color roles don't map 1:1, typography is structurally different, and dark theme approach is fundamentally different. Should recommend migrating one component family at a time.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "I'm building a banking app for a major financial institution. The design team wants to use Material 3 Expressive with spring animations and bold shapes to make it feel modern and engaging. The app handles account balances, transfers, bill payments, and investment tracking. Is M3 Expressive appropriate here?",
+      "expected_output": "Should recommend CAUTION with M3 Expressive for banking. Should note that banking apps need low cognitive load, stability, and trustworthiness. Spring animations, bold shapes, and emphasized typography may undermine these qualities. Should suggest selective, restrained use at most.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "We're starting a new web project and considering Material Web Components. Are they production-ready for a customer-facing app with 50k+ daily users? What should we check before committing?",
+      "expected_output": "Should recommend verifying Material Web's current maintenance status, component coverage, release cadence, and community adoption. Should NOT give a yes/no answer without qualification. Should mention checking the GitHub repo's recent activity and open issues.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "prompt": "Design an icon button component for our design system. It's a 24dp icon inside a 40dp circular container, used for common actions like close, settings, and more options. What accessibility requirements should it meet?",
+      "expected_output": "Must include: aria-label/contentDescription for every icon button, 48dp minimum touch target (the 40dp container needs 4dp padding all around or the touch area must extend beyond the visual), keyboard focus visible, Enter/Space activation, appropriate role/announcement for screen readers.",
+      "files": []
+    },
+    {
+      "id": 10,
+      "prompt": "Audit this login form for Material Design compliance: email field with red border on error but no error text, password field with placeholder 'Enter password' as the only label, a disabled 'Sign In' button with no explanation, and a 'Forgot Password?' text link that's the same color as body text.",
+      "expected_output": "Should identify: (1) error state uses color alone — needs error icon + text, (2) placeholder should not replace label — needs persistent label, (3) disabled button without explanation — should show why it's disabled or keep it enabled with inline validation, (4) link should be distinguishable from body text — needs color + underline.",
+      "files": []
+    },
+    {
+      "id": 11,
+      "prompt": "We use MUI v5 in our React app. Our designer just gave us a Figma file that uses Material Design 3 tokens and components. Can I just map the M3 tokens directly to MUI's theme and call it a day?",
+      "expected_output": "Should explain: MUI v5 is M2-based, M3 tokens don't map 1:1. Need explicit mapping strategy. M2 primaryVariant ≈ M3 primaryContainer in intent but tonal values differ. Typography systems are structurally different. Should distinguish between 'MUI's Material Design implementation' and 'the M3 specification.' Should mention checking current MUI version for any M3 theming API updates.",
+      "files": []
+    },
+    {
+      "id": 12,
+      "prompt": "I want to build a better design system for our startup. We have 3 products — a mobile app, a web dashboard, and a marketing site. What approach should I take?",
+      "expected_output": "This says 'design system' without specifying Material Design. Should ask which design system they want to follow before applying Material Design rules. Should NOT automatically assume Material Design unless the user mentions it.",
+      "files": []
+    }
+  ]
+}

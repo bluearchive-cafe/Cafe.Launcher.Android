@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">蔚藍咖啡廳安裝器</string>
+    <string name="checking_title">正在檢查系統</string>
+    <string name="checking_message">正在偵測裝置和網路狀態…</string>
+    <string name="already_installed_title">遊戲已安裝</string>
+    <string name="already_installed_message">%1$s（版本 %2$s）已安裝在此裝置上。</string>
+    <string name="already_installed_launch">啟動遊戲</string>
+    <string name="already_installed_reinstall">重新安裝</string>
+    <string name="downloading_title">正在下載</string>
+    <string name="downloading_preparing">正在連線到下載服務…</string>
+    <string name="downloading_progress">%1$s / %2$s</string>
+    <string name="downloading_progress_unknown">已下載 %1$s</string>
+    <string name="downloading_speed">%1$s</string>
+    <string name="download_retry">重新下載</string>
+    <string name="network_error_title">網路錯誤</string>
+    <string name="network_error_message">下載失敗，請檢查網路連線後重試。</string>
+    <string name="confirm_install_title">準備安裝</string>
+    <string name="confirm_install_message">即將安裝 %1$s\n大小：%2$s\n檔案：%3$d 個</string>
+    <string name="confirm_install_button">安裝</string>
+    <string name="confirm_cancel">取消</string>
+    <string name="confirm_update_title">發現新版本</string>
+    <string name="latest_version">最新版</string>
+    <string name="confirm_update_message">%1$s\n目前版本：%2$s\n新版本：%3$s\n大小：%4$s\n檔案：%5$d 個</string>
+    <string name="confirm_update_button">更新</string>
+    <string name="confirm_update_warning">更新可能會保留或清除應用程式資料，請先備份重要資料。</string>
+    <string name="installing_title">正在安裝</string>
+    <string name="installing_preparing">正在準備安裝…</string>
+    <string name="installing_progress_split">%1$s（%2$d / %3$d）</string>
+    <string name="installing_progress_pct">已完成 %1$d%%</string>
+    <string name="installing_confirm_system">請在系統彈出視窗中確認安裝。</string>
+    <string name="eta_less_than_minute">不到 1 分鐘</string>
+    <string name="eta_minutes_seconds">約 %1$d 分鐘 %2$d 秒</string>
+    <string name="eta_seconds">約 %1$d 秒</string>
+    <string name="permission_title">需要安裝權限</string>
+    <string name="permission_message">請允許此應用程式安裝未知來源應用程式，然後返回繼續。</string>
+    <string name="permission_grant">前往設定</string>
+    <string name="success_title">安裝完成</string>
+    <string name="success_message">%1$s 已成功安裝。</string>
+    <string name="success_launch">啟動遊戲</string>
+    <string name="success_cleanup">解除安裝安裝器</string>
+    <string name="cleanup_title">解除安裝安裝器？</string>
+    <string name="cleanup_message">確定要解除安裝安裝器嗎？之後如有需要可重新下載。</string>
+    <string name="cleanup_confirm">解除安裝</string>
+    <string name="cleanup_keep">保留</string>
+    <string name="cancel_confirm_title">取消操作？</string>
+    <string name="cancel_confirm_message">確定要取消嗎？下載檔案和安裝進度將會遺失。</string>
+    <string name="cancel_confirm_yes">確定取消</string>
+    <string name="cancel_confirm_no">繼續</string>
+    <string name="notif_channel_name">安裝進度</string>
+    <string name="notif_channel_desc">顯示遊戲安裝進度</string>
+    <string name="notif_title">正在安裝遊戲</string>
+    <string name="notif_message">安裝進行中，請勿關閉應用程式</string>
+    <string name="failed_title">安裝失敗</string>
+    <string name="failed_message">無法完成安裝。</string>
+    <string name="failed_retry">重試</string>
+    <string name="failed_details_show">查看詳情</string>
+    <string name="failed_details_hide">收合詳情</string>
+    <string name="failed_launch_not_found">找不到遊戲啟動入口，遊戲可能未正確安裝。</string>
+    <string name="storage_low_title">儲存空間不足</string>
+    <string name="storage_low_message">需要 %1$s 可用空間，但僅剩 %2$s。\n\n請清理空間後重試。</string>
+    <string name="storage_recheck">重新檢查</string>
+    <string name="corrupted_title">安裝資料損毀</string>
+    <string name="corrupted_message">解包安裝檔案時發生錯誤：%1$s</string>
+    <string name="close">關閉</string>
+    <string name="unknown_error">發生未知錯誤。</string>
+    <string name="cd_app_icon">安裝器圖示</string>
+    <string name="cd_progress_install">安裝總進度，%1$d%%</string>
+    <string name="cd_progress_download">下載進度，%1$d%%</string>
+    <string name="cd_progress_download_unknown">已下載 %1$s</string>
+    <string name="cd_progress_split">正在寫入 %1$s，已完成 %2$d%%</string>
+    <string name="cd_progress_indeterminate">正在載入</string>
+    <string name="format_mb">%.1f MB</string>
+    <string name="format_kb">%.0f KB</string>
+    <string name="format_bytes">%d B</string>
+    <string name="error_update_incompatible">簽章不一致，請先解除安裝已安裝版本後重試。</string>
+    <string name="error_insufficient_storage">裝置儲存空間不足，請清理後重試。</string>
+    <string name="error_version_downgrade">已安裝的版本較新，無法安裝舊版本。</string>
+    <string name="error_conflict">安裝套件與已安裝的應用程式發生衝突。</string>
+    <string name="error_invalid_apk">安裝檔案已損毀，請重新下載。</string>
+    <string name="error_blocked">安裝被 %1$s 阻止，請關閉後重試。</string>
+    <string name="error_blocked_device">裝置限制</string>
+    <string name="error_storage">裝置儲存空間不足。</string>
+    <string name="error_aborted">安裝已被取消。</string>
+    <string name="error_incompatible">此版本與您的裝置不相容。</string>
+    <string name="error_already_exists">應用程式已存在，無法覆蓋安裝。</string>
+    <string name="error_missing_split">安裝套件不完整，缺少必要的分割檔案。</string>
+    <string name="error_no_matching_abis">應用程式架構與您的裝置 CPU 不相容。</string>
+    <string name="error_bad_signature">安裝套件簽章無效。</string>
+    <string name="error_generic">安裝失敗（錯誤碼：%1$d）</string>
+    <string name="nav_install">安裝</string>
+    <string name="nav_help">說明</string>
+    <string name="nav_settings">設定</string>
+    <string name="help_title">安裝說明</string>
+    <string name="help_body">1. 安裝器會先檢查儲存空間和目標遊戲安裝狀態。\n2. 下載完成後，請確認安裝或更新。\n3. Android 8 及以上系統需要允許安裝未知來源應用程式。\n4. 系統安裝確認視窗出現後，請依提示繼續。</string>
+    <string name="help_note">如果安裝失敗，請先確認網路連線、儲存空間、裝置架構和已安裝版本簽章。失敗頁的「查看詳情」會顯示系統返回的具體原因。</string>
+    <string name="settings_title">設定與關於</string>
+    <string name="settings_theme_label">深色主題</string>
+    <string name="settings_language_label">語言</string>
+    <string name="settings_target_package_label">目標遊戲套件名稱</string>
+    <string name="settings_download_url_label">下載端點</string>
+    <string name="settings_installer_version_label">安裝器版本</string>
+    <string name="settings_version_format">%1$s（%2$d）</string>
+    <string-array name="theme_mode_options">
+        <item>跟隨系統</item>
+        <item>總是開啟</item>
+        <item>總是關閉</item>
+    </string-array>
+    <string-array name="language_options">
+        <item>跟隨系統</item>
+        <item>简体中文</item>
+        <item>繁體中文</item>
+        <item>English</item>
+    </string-array>
+</resources>

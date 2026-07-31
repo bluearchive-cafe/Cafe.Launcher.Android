@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#1976A8</color>
+    <color name="primaryDark">#115276</color>
+    <color name="accent">#D85A8A</color>
+    <color name="background">#EEF3F7</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F5F8FA</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="on_surface_high">#DE000000</color>
+    <color name="on_surface_medium">#99000000</color>
+    <color name="on_surface_disabled">#61000000</color>
+    <color name="divider">#1F000000</color>
+    <color name="outline">#5F6368</color>
+    <color name="error">#B00020</color>
+    <color name="error_surface">#FFF1F3</color>
+    <color name="success">#2E7D32</color>
+    <color name="warning">#9A6700</color>
+    <color name="state_pressed">#1F000000</color>
+    <color name="state_focused">#14000000</color>
+    <color name="disabled_fill">#1F000000</color>
+    <color name="disabled_outline">#1F000000</color>
+    <color name="progress_track">#331976A8</color>
+    <color name="launcher_icon_background">#115276</color>
+    <color name="launcher_icon_foreground">#FFFFFF</color>
+
+    <!-- Backward-compatible aliases used by existing resources. -->
+    <color name="background_light">@color/background</color>
+    <color name="background_dark">#121212</color>
+    <color name="text_primary_light">@color/on_surface_high</color>
+    <color name="text_primary_dark">#DEFFFFFF</color>
+    <color name="text_secondary_light">@color/on_surface_medium</color>
+    <color name="text_secondary_dark">#99FFFFFF</color>
+    <color name="error_red">@color/error</color>
+    <color name="success_green">@color/success</color>
+    <color name="white">#FFFFFF</color>
+    <color name="primary_pressed_fill">#1F1976A8</color>
+    <color name="primary_focused_fill">#141976A8</color>
+    <color name="disabled_text">@color/on_surface_disabled</color>
+</resources>

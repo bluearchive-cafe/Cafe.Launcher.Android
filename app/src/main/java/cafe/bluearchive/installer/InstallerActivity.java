@@ -1,0 +1,1561 @@
+package cafe.bluearchive.installer;
+
+import android.Manifest;
+import android.app.AlertDialog;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentSender;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.LocaleList;
+import android.os.Looper;
+import android.os.StatFs;
+import android.provider.Settings;
+import android.provider.Settings.Global;
+import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.accessibility.AccessibilityEvent;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.TextView;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
+
+import androidx.activity.ComponentActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.app.NotificationCompat;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationView;
+
+/**
+ * Downloads the latest APKS from the CDN, extracts its split APKs, and installs
+ * them via {@link PackageInstaller.Session}.
+ *
+ * <p>Flow:
+ * <ol>
+ *   <li>Pre-flight: storage check, existing version
+ *   <li>Download APKS from CDN with progress
+ *   <li>Extract split APKs from the ZIP container
+ *   <li>Confirm install / update
+ *   <li>Permission (unknown sources, Android 8+)
+ *   <li>Install with per-split progress + ETA
+ *   <li>Result — launch, retry, or self-cleanup
+ * </ol>
+ */
+public final class InstallerActivity extends ComponentActivity {
+
+    private static final String TAG = "InstallerActivity";
+    private static final String ACTION_INSTALL_STATUS =
+            "cafe.bluearchive.installer.INSTALL_STATUS";
+    private static final String EXTRA_INSTALL_CALLBACK_TOKEN =
+            "cafe.bluearchive.installer.extra.INSTALL_CALLBACK_TOKEN";
+    private static final String PREFS_NAME = "installer_state";
+    private static final String PREF_INSTALL_CALLBACK_TOKEN = "install_callback_token";
+    private static final String PREF_THEME_MODE = "theme_mode";
+    private static final String PREF_LANGUAGE_MODE = "language_mode";
+
+    private static final String THEME_SYSTEM = "system";
+    private static final String THEME_DARK = "dark";
+    private static final String THEME_LIGHT = "light";
+
+    private static final String LANGUAGE_SYSTEM = "system";
+    private static final String LANGUAGE_ZH_HANS = "zh-Hans";
+    private static final String LANGUAGE_ZH_HANT = "zh-Hant";
+    private static final String LANGUAGE_EN = "en";
+
+    // Notification
+    private static final String CHANNEL_ID = "install_progress";
+    private static final int NOTIFY_INSTALL = 100;
+
+    // Injected by the build system
+    private static final String GAME_PACKAGE_NAME = BuildConfig.GAME_PACKAGE_NAME;
+    private static final String GAME_ACTIVITY_NAME = BuildConfig.GAME_ACTIVITY_NAME;
+
+    // CDN
+    private static final String APKS_DOWNLOAD_URL = BuildConfig.APKS_DOWNLOAD_URL;
+
+    // Tuning
+    private static final int PROGRESS_UPDATE_INTERVAL_MS = 200;
+    private static final long MIN_FREE_SPACE_FACTOR = 2;
+    private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024; // 64 KiB
+    private static final int SPLIT_BUFFER_SIZE = 1024 * 1024; // 1 MiB
+
+    // ── UI state machine ───────────────────────────────────────
+
+    private enum UiState {
+        CHECKING,
+        ALREADY_INSTALLED,
+        DOWNLOADING,
+        CONFIRM_INSTALL,
+        CONFIRM_UPDATE,
+        NETWORK_ERROR,
+        CORRUPTED,
+        PERMISSION_DENIED,
+        INSTALLING,
+        CONFIRM_SYSTEM,
+        SUCCESS,
+        FAILED,
+        STORAGE_LOW
+    }
+
+    // ── Widgets ────────────────────────────────────────────────
+
+    private ImageView statusIcon;
+    private TextView titleText;
+    private TextView messageText;
+    private TextView supportingText;
+    private ProgressBar progressBar;
+    private ProgressBar indeterminateBar;
+    private TextView splitLabel;
+    private TextView etaLabel;
+    private TextView errorDetail;
+    private Button primaryButton;
+    private Button secondaryButton;
+    private Button tertiaryButton;
+    private BottomNavigationView bottomNavigation;
+    private NavigationView navigationView;
+    private View installContent;
+    private View helpContent;
+    private View settingsContent;
+    private TextView settingsPackageName;
+    private TextView settingsDownloadUrl;
+    private TextView settingsInstallerVersion;
+    private Spinner themeSpinner;
+    private Spinner languageSpinner;
+
+    // ── State ──────────────────────────────────────────────────
+
+    private UiState currentState = UiState.CHECKING;
+    private boolean installing;
+    private PackageInfo existingPackage;
+    private String[] splitNames;
+    private String[] splitEntryNames;
+    private long[] splitSizes;
+    private long totalInstallBytes;
+    private boolean detailExpanded;
+    private String lastFailureDetail;
+    private int selectedNavItemId = R.id.nav_install;
+    private boolean destroyed;
+
+    // Download / extract intermediates
+    private File apksFile;
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private NotificationManager notificationManager;
+    private String installCallbackToken;
+    private ActivityResultLauncher<Intent> unknownSourcesLauncher;
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
+
+    // ── lifecycle ──────────────────────────────────────────────
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(applyUserConfiguration(newBase));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Context applyUserConfiguration(Context base) {
+        SharedPreferences prefs = base.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String themeMode = prefs.getString(PREF_THEME_MODE, THEME_SYSTEM);
+        String languageMode = prefs.getString(PREF_LANGUAGE_MODE, LANGUAGE_SYSTEM);
+
+        Configuration config = new Configuration(base.getResources().getConfiguration());
+
+        if (THEME_DARK.equals(themeMode)) {
+            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                    | Configuration.UI_MODE_NIGHT_YES;
+        } else if (THEME_LIGHT.equals(themeMode)) {
+            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                    | Configuration.UI_MODE_NIGHT_NO;
+        }
+
+        Locale locale = localeForLanguageMode(languageMode);
+        if (locale != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                LocaleList locales = new LocaleList(locale);
+                LocaleList.setDefault(locales);
+                config.setLocale(locale);
+                config.setLocales(locales);
+            } else {
+                Locale.setDefault(locale);
+                config.locale = locale;
+            }
+        }
+
+        base.getResources().updateConfiguration(config, base.getResources().getDisplayMetrics());
+        return base.createConfigurationContext(config);
+    }
+
+    private static Locale localeForLanguageMode(String languageMode) {
+        if (LANGUAGE_ZH_HANS.equals(languageMode)) {
+            return Locale.SIMPLIFIED_CHINESE;
+        }
+        if (LANGUAGE_ZH_HANT.equals(languageMode)) {
+            return Locale.TRADITIONAL_CHINESE;
+        }
+        if (LANGUAGE_EN.equals(languageMode)) {
+            return Locale.ENGLISH;
+        }
+        return null;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        destroyed = false;
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_installer);
+        bindViews();
+        bindNavigation();
+        registerActivityResultLaunchers();
+        createNotificationChannel();
+
+        if (savedInstanceState != null) {
+            installing = savedInstanceState.getBoolean("installing", false);
+            detailExpanded = savedInstanceState.getBoolean("detailExpanded", false);
+            lastFailureDetail = savedInstanceState.getString("lastFailureDetail");
+            selectedNavItemId = savedInstanceState.getInt("selectedNavItemId", R.id.nav_install);
+            currentState = uiStateFromName(savedInstanceState.getString("currentState"));
+        }
+
+        notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        showSection(selectedNavItemId);
+
+        if (handleInstallStatus(getIntent())) {
+            return;
+        }
+        if (savedInstanceState != null && selectedNavItemId != R.id.nav_install) {
+            setUiState(currentState);
+            return;
+        }
+        runPreflightChecks();
+    }
+
+    private void registerActivityResultLaunchers() {
+        unknownSourcesLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                            || getPackageManager().canRequestPackageInstalls()) {
+                        maybeRequestNotificationPermissionThenInstall();
+                    } else {
+                        installing = false;
+                        setUiState(UiState.PERMISSION_DENIED);
+                    }
+                });
+
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                granted -> startInstallSession());
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("installing", installing);
+        outState.putBoolean("detailExpanded", detailExpanded);
+        outState.putString("lastFailureDetail", lastFailureDetail);
+        outState.putInt("selectedNavItemId", selectedNavItemId);
+        outState.putString("currentState", currentState.name());
+    }
+
+    private UiState uiStateFromName(String name) {
+        if (name == null) return UiState.CHECKING;
+        try {
+            return UiState.valueOf(name);
+        } catch (IllegalArgumentException ignored) {
+            return UiState.CHECKING;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // If installing and user leaves, show persistent notification
+        if (installing) {
+            showInstallNotification(progressBar.getProgress(), false);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleInstallStatus(intent);
+    }
+
+    @Override
+    protected void onDestroy() {
+        destroyed = true;
+        super.onDestroy();
+        if (!installing) {
+            cleanupTempFiles();
+        }
+        // Remove notification when installation is no longer active
+        if (!installing && notificationManager != null) {
+            notificationManager.cancel(NOTIFY_INSTALL);
+        }
+    }
+
+    private void postToUi(Runnable runnable) {
+        mainHandler.post(() -> {
+            if (!destroyed) {
+                runnable.run();
+            }
+        });
+    }
+
+    // ── notification channel ─────────────────────────────────────
+
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    CHANNEL_ID,
+                    getString(R.string.notif_channel_name),
+                    NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription(getString(R.string.notif_channel_desc));
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (nm != null) nm.createNotificationChannel(channel);
+        }
+    }
+
+    private void showInstallNotification(int progress, boolean indeterminate) {
+        Intent intent = new Intent(this, InstallerActivity.class);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent pending = PendingIntent.getActivity(
+                this, 0, intent, flags);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(getString(R.string.notif_title))
+                .setContentText(getString(R.string.notif_message))
+                .setOngoing(true)
+                .setContentIntent(pending)
+                .setProgress(100, indeterminate ? 0 : progress, indeterminate);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        notificationManager.notify(NOTIFY_INSTALL, builder.build());
+    }
+
+    private void cancelInstallNotification() {
+        if (notificationManager != null) {
+            notificationManager.cancel(NOTIFY_INSTALL);
+        }
+    }
+
+    // ── cancel confirmation ──────────────────────────────────────
+
+    private void confirmCancel() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.cancel_confirm_title)
+                .setMessage(R.string.cancel_confirm_message)
+                .setPositiveButton(R.string.cancel_confirm_yes, (d, w) -> {
+                    installing = false;
+                    cleanupTempFiles();
+                    finishAndRemoveTask();
+                })
+                .setNegativeButton(R.string.cancel_confirm_no, null)
+                .show();
+    }
+
+    // ── crossfade helpers ────────────────────────────────────────
+
+    private static final int CROSSFADE_DURATION_MS = 200;
+
+    /**
+     * Crossfades from indeterminate spinner to determinate progress bar
+     * (or vice versa) with a short fade animation.
+     */
+    private void crossfadeProgress(ProgressBar from, ProgressBar to) {
+        if (!areSystemAnimationsEnabled()) {
+            if (from != null) from.setVisibility(View.GONE);
+            to.setAlpha(1f);
+            to.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        to.setAlpha(0f);
+        to.setVisibility(View.VISIBLE);
+        to.animate()
+                .alpha(1f)
+                .setDuration(CROSSFADE_DURATION_MS)
+                .setListener(null);
+
+        if (from != null && from.getVisibility() == View.VISIBLE) {
+            from.animate()
+                    .alpha(0f)
+                    .setDuration(CROSSFADE_DURATION_MS)
+                    .withEndAction(() -> from.setVisibility(View.GONE))
+                    .setListener(null);
+        }
+    }
+
+    private boolean areSystemAnimationsEnabled() {
+        try {
+            return Global.getFloat(getContentResolver(), Global.ANIMATOR_DURATION_SCALE, 1f) != 0f;
+        } catch (Exception ignored) {
+            return true;
+        }
+    }
+
+    // ── view binding ───────────────────────────────────────────
+
+    private void bindViews() {
+        statusIcon = findViewById(R.id.statusIcon);
+        titleText = findViewById(R.id.titleText);
+        messageText = findViewById(R.id.messageText);
+        supportingText = findViewById(R.id.supportingText);
+        progressBar = findViewById(R.id.progressBar);
+        indeterminateBar = findViewById(R.id.indeterminateBar);
+        splitLabel = findViewById(R.id.splitLabel);
+        etaLabel = findViewById(R.id.etaLabel);
+        errorDetail = findViewById(R.id.errorDetail);
+        primaryButton = findViewById(R.id.primaryButton);
+        secondaryButton = findViewById(R.id.secondaryButton);
+        tertiaryButton = findViewById(R.id.tertiaryButton);
+        errorDetail.setMovementMethod(new ScrollingMovementMethod());
+
+        installContent = findViewById(R.id.installContent);
+        helpContent = findViewById(R.id.helpContent);
+        settingsContent = findViewById(R.id.settingsContent);
+        bottomNavigation = findViewById(R.id.bottomNavigation);
+        navigationView = findViewById(R.id.navigationView);
+        settingsPackageName = findViewById(R.id.settingsPackageName);
+        settingsDownloadUrl = findViewById(R.id.settingsDownloadUrl);
+        settingsInstallerVersion = findViewById(R.id.settingsInstallerVersion);
+        themeSpinner = findViewById(R.id.themeSpinner);
+        languageSpinner = findViewById(R.id.languageSpinner);
+        bindSettingsContent();
+    }
+
+    private void bindSettingsContent() {
+        if (settingsPackageName != null) {
+            settingsPackageName.setText(GAME_PACKAGE_NAME);
+        }
+        if (settingsDownloadUrl != null) {
+            settingsDownloadUrl.setText(APKS_DOWNLOAD_URL);
+        }
+        if (settingsInstallerVersion != null) {
+            settingsInstallerVersion.setText(getString(R.string.settings_version_format,
+                    BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
+        }
+        bindPreferenceSpinner(
+                themeSpinner,
+                R.array.theme_mode_options,
+                getThemeMode(),
+                this::themeModeToIndex,
+                this::indexToThemeMode,
+                PREF_THEME_MODE);
+        bindPreferenceSpinner(
+                languageSpinner,
+                R.array.language_options,
+                getLanguageMode(),
+                this::languageModeToIndex,
+                this::indexToLanguageMode,
+                PREF_LANGUAGE_MODE);
+    }
+
+    private void bindPreferenceSpinner(Spinner spinner, int labelsResId, String currentValue,
+                                       PreferenceIndexMapper toIndex,
+                                       PreferenceValueMapper toValue,
+                                       String preferenceKey) {
+        if (spinner == null) return;
+
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this, labelsResId, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setSelection(toIndex.indexFor(currentValue), false);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                savePreferenceAndRecreate(preferenceKey, toValue.valueFor(position));
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+    }
+
+    private String getThemeMode() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(PREF_THEME_MODE, THEME_SYSTEM);
+    }
+
+    private String getLanguageMode() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .getString(PREF_LANGUAGE_MODE, LANGUAGE_SYSTEM);
+    }
+
+    private void savePreferenceAndRecreate(String key, String value) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (value.equals(prefs.getString(key, null))) return;
+        prefs.edit().putString(key, value).apply();
+        recreate();
+    }
+
+    private int themeModeToIndex(String value) {
+        if (THEME_DARK.equals(value)) return 1;
+        if (THEME_LIGHT.equals(value)) return 2;
+        return 0;
+    }
+
+    private String indexToThemeMode(int index) {
+        if (index == 1) return THEME_DARK;
+        if (index == 2) return THEME_LIGHT;
+        return THEME_SYSTEM;
+    }
+
+    private int languageModeToIndex(String value) {
+        if (LANGUAGE_ZH_HANS.equals(value)) return 1;
+        if (LANGUAGE_ZH_HANT.equals(value)) return 2;
+        if (LANGUAGE_EN.equals(value)) return 3;
+        return 0;
+    }
+
+    private String indexToLanguageMode(int index) {
+        if (index == 1) return LANGUAGE_ZH_HANS;
+        if (index == 2) return LANGUAGE_ZH_HANT;
+        if (index == 3) return LANGUAGE_EN;
+        return LANGUAGE_SYSTEM;
+    }
+
+    private interface PreferenceIndexMapper {
+        int indexFor(String value);
+    }
+
+    private interface PreferenceValueMapper {
+        String valueFor(int index);
+    }
+
+    private void bindNavigation() {
+        if (bottomNavigation != null) {
+            bottomNavigation.setOnItemSelectedListener(this::onNavigationItemSelected);
+        }
+        if (navigationView != null) {
+            navigationView.setNavigationItemSelectedListener(this::onNavigationItemSelected);
+        }
+    }
+
+    private boolean onNavigationItemSelected(MenuItem item) {
+        showSection(item.getItemId(), false);
+        return true;
+    }
+
+    private void showSection(int itemId) {
+        showSection(itemId, true);
+    }
+
+    private void showSection(int itemId, boolean syncNavigation) {
+        if (itemId != R.id.nav_help && itemId != R.id.nav_settings) {
+            itemId = R.id.nav_install;
+        }
+        selectedNavItemId = itemId;
+
+        if (installContent != null) {
+            installContent.setVisibility(itemId == R.id.nav_install ? View.VISIBLE : View.GONE);
+        }
+        if (helpContent != null) {
+            helpContent.setVisibility(itemId == R.id.nav_help ? View.VISIBLE : View.GONE);
+        }
+        if (settingsContent != null) {
+            settingsContent.setVisibility(itemId == R.id.nav_settings ? View.VISIBLE : View.GONE);
+        }
+
+        if (syncNavigation && bottomNavigation != null && bottomNavigation.getSelectedItemId() != itemId) {
+            bottomNavigation.setSelectedItemId(itemId);
+        }
+        if (navigationView != null) {
+            navigationView.setCheckedItem(itemId);
+        }
+    }
+
+    // ── temp file cleanup ──────────────────────────────────────
+
+    private void cleanupTempFiles() {
+        if (apksFile != null && apksFile.exists()) {
+            apksFile.delete();
+        }
+    }
+
+    // ── UI state dispatcher ────────────────────────────────────
+
+    private void setUiState(UiState state) {
+        currentState = state;
+
+        // Reset all widgets
+        progressBar.setVisibility(View.GONE);
+        indeterminateBar.setVisibility(View.GONE);
+        splitLabel.setVisibility(View.GONE);
+        etaLabel.setVisibility(View.GONE);
+        errorDetail.setVisibility(View.GONE);
+        supportingText.setVisibility(View.GONE);
+        primaryButton.setVisibility(View.GONE);
+        secondaryButton.setVisibility(View.GONE);
+        tertiaryButton.setVisibility(View.GONE);
+        primaryButton.setOnClickListener(null);
+        secondaryButton.setOnClickListener(null);
+        tertiaryButton.setOnClickListener(null);
+        primaryButton.setEnabled(true);
+        secondaryButton.setEnabled(true);
+        tertiaryButton.setEnabled(true);
+        messageText.setGravity(Gravity.CENTER);
+        messageText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+        statusIcon.setImageResource(R.drawable.ic_status_info);
+
+        switch (state) {
+            case CHECKING -> showChecking();
+            case ALREADY_INSTALLED -> showAlreadyInstalled();
+            case DOWNLOADING -> showDownloading();
+            case CONFIRM_INSTALL -> showConfirmInstall();
+            case CONFIRM_UPDATE -> showConfirmUpdate();
+            case NETWORK_ERROR -> showNetworkError();
+            case CORRUPTED -> showCorrupted();
+            case PERMISSION_DENIED -> showPermissionDenied();
+            case INSTALLING -> showInstalling();
+            case CONFIRM_SYSTEM -> showConfirmSystem();
+            case SUCCESS -> showSuccess();
+            case FAILED -> showFailed();
+            case STORAGE_LOW -> showStorageLow();
+        }
+
+        // Announce state change to screen readers (treat title as announcement)
+        titleText.sendAccessibilityEvent(AccessibilityEvent.TYPE_ANNOUNCEMENT);
+    }
+
+    // ── state: CHECKING ────────────────────────────────────────
+
+    private void showChecking() {
+        titleText.setText(R.string.checking_title);
+        messageText.setText(R.string.checking_message);
+        indeterminateBar.setVisibility(View.VISIBLE);
+        indeterminateBar.setAlpha(1f);
+        indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+    }
+
+    // ── state: ALREADY_INSTALLED ───────────────────────────────
+
+    private void showAlreadyInstalled() {
+        String label = getAppLabel();
+        String ver = existingPackage != null ? existingPackage.versionName : "?";
+        titleText.setText(R.string.already_installed_title);
+        messageText.setText(getString(R.string.already_installed_message, label, ver));
+
+        primaryButton.setText(R.string.already_installed_launch);
+        primaryButton.setOnClickListener(v -> launchGame());
+        primaryButton.setVisibility(View.VISIBLE);
+        primaryButton.setContentDescription(getString(R.string.already_installed_launch));
+
+        secondaryButton.setText(R.string.already_installed_reinstall);
+        secondaryButton.setOnClickListener(v -> startDownload());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: DOWNLOADING ─────────────────────────────────────
+
+    private void showDownloading() {
+        titleText.setText(R.string.downloading_title);
+        messageText.setText(R.string.downloading_preparing);
+        indeterminateBar.setVisibility(View.VISIBLE);
+        indeterminateBar.setAlpha(1f);
+        progressBar.setVisibility(View.GONE);
+        progressBar.setProgress(0);
+        progressBar.setIndeterminate(false);
+        progressBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+    }
+
+    // ── state: NETWORK_ERROR ───────────────────────────────────
+
+    private void showNetworkError() {
+        cancelInstallNotification();
+        statusIcon.setImageResource(R.drawable.ic_status_error);
+        titleText.setText(R.string.network_error_title);
+        messageText.setText(R.string.network_error_message);
+
+        primaryButton.setText(R.string.download_retry);
+        primaryButton.setOnClickListener(v -> startDownload());
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.close);
+        secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    private void showCorrupted() {
+        statusIcon.setImageResource(R.drawable.ic_status_error);
+        titleText.setText(R.string.corrupted_title);
+        messageText.setText(getString(R.string.corrupted_message,
+                lastFailureDetail != null ? lastFailureDetail : getString(R.string.unknown_error)));
+
+        primaryButton.setText(R.string.download_retry);
+        primaryButton.setOnClickListener(v -> startDownload());
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.close);
+        secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: CONFIRM_INSTALL / CONFIRM_UPDATE ────────────────
+
+    private void showConfirmInstall() {
+        messageText.setGravity(Gravity.START);
+        messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+        titleText.setText(R.string.confirm_install_title);
+        messageText.setText(getString(R.string.confirm_install_message,
+                getAppLabel(), formatBytes(totalInstallBytes), splitNames.length));
+
+        primaryButton.setText(R.string.confirm_install_button);
+        primaryButton.setOnClickListener(v -> {
+            primaryButton.setEnabled(false);
+            maybeRequestPermission();
+        });
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.confirm_cancel);
+        secondaryButton.setOnClickListener(v -> confirmCancel());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    private void showConfirmUpdate() {
+        String oldVer = existingPackage != null ? existingPackage.versionName : "?";
+        String newVer = getString(R.string.latest_version);
+        messageText.setGravity(Gravity.START);
+        messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+        titleText.setText(R.string.confirm_update_title);
+        messageText.setText(getString(R.string.confirm_update_message,
+                getAppLabel(), oldVer, newVer, formatBytes(totalInstallBytes), splitNames.length));
+        supportingText.setText(R.string.confirm_update_warning);
+        supportingText.setVisibility(View.VISIBLE);
+
+        primaryButton.setText(R.string.confirm_update_button);
+        primaryButton.setOnClickListener(v -> {
+            primaryButton.setEnabled(false);
+            maybeRequestPermission();
+        });
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.confirm_cancel);
+        secondaryButton.setOnClickListener(v -> confirmCancel());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: PERMISSION_DENIED ───────────────────────────────
+
+    private void showPermissionDenied() {
+        statusIcon.setImageResource(R.drawable.ic_status_warning);
+        titleText.setText(R.string.permission_title);
+        messageText.setText(R.string.permission_message);
+
+        primaryButton.setText(R.string.permission_grant);
+        primaryButton.setOnClickListener(v -> {
+            Intent intent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            unknownSourcesLauncher.launch(intent);
+        });
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.close);
+        secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: INSTALLING ──────────────────────────────────────
+
+    private void showInstalling() {
+        titleText.setText(R.string.installing_title);
+        messageText.setText(R.string.installing_preparing);
+        indeterminateBar.setVisibility(View.VISIBLE);
+        indeterminateBar.setAlpha(1f);
+        indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+        // Show indeterminate notification initially
+        showInstallNotification(0, true);
+    }
+
+    // ── state: CONFIRM_SYSTEM ──────────────────────────────────
+
+    private void showConfirmSystem() {
+        titleText.setText(R.string.installing_title);
+        messageText.setText(R.string.installing_confirm_system);
+        indeterminateBar.setVisibility(View.VISIBLE);
+        indeterminateBar.setAlpha(1f);
+        indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+    }
+
+    // ── state: SUCCESS ─────────────────────────────────────────
+
+    private void showSuccess() {
+        installing = false;
+        cancelInstallNotification();
+        cleanupTempFiles();
+        statusIcon.setImageResource(R.drawable.ic_status_success);
+        titleText.setText(R.string.success_title);
+        messageText.setText(getString(R.string.success_message, getAppLabel()));
+
+        primaryButton.setText(R.string.success_launch);
+        primaryButton.setOnClickListener(v -> launchGame());
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.success_cleanup);
+        secondaryButton.setOnClickListener(v -> requestSelfUninstall());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: FAILED ──────────────────────────────────────────
+
+    private void showFailed() {
+        installing = false;
+        cancelInstallNotification();
+        statusIcon.setImageResource(R.drawable.ic_status_error);
+        titleText.setText(R.string.failed_title);
+        messageText.setText(R.string.failed_message);
+
+        if (lastFailureDetail != null && !lastFailureDetail.isEmpty()) {
+            errorDetail.setText(lastFailureDetail);
+            errorDetail.setVisibility(detailExpanded ? View.VISIBLE : View.GONE);
+        }
+
+        primaryButton.setText(R.string.failed_retry);
+        primaryButton.setOnClickListener(v -> {
+            detailExpanded = false;
+            lastFailureDetail = null;
+            cleanupTempFiles();
+            splitNames = null;
+            splitEntryNames = null;
+            splitSizes = null;
+            totalInstallBytes = 0;
+            startDownload();
+        });
+        primaryButton.setVisibility(View.VISIBLE);
+
+        if (lastFailureDetail != null && !lastFailureDetail.isEmpty()) {
+            secondaryButton.setText(detailExpanded
+                    ? R.string.failed_details_hide : R.string.failed_details_show);
+            secondaryButton.setOnClickListener(v -> {
+                detailExpanded = !detailExpanded;
+                setUiState(UiState.FAILED);
+            });
+            tertiaryButton.setText(R.string.close);
+            tertiaryButton.setOnClickListener(v -> finishAndRemoveTask());
+            tertiaryButton.setVisibility(View.VISIBLE);
+        } else {
+            secondaryButton.setText(R.string.close);
+            secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        }
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── state: STORAGE_LOW ─────────────────────────────────────
+
+    private void showStorageLow() {
+        long free = getFreeSpace();
+        long required = totalInstallBytes * MIN_FREE_SPACE_FACTOR;
+        statusIcon.setImageResource(R.drawable.ic_status_warning);
+        titleText.setText(R.string.storage_low_title);
+        messageText.setText(getString(R.string.storage_low_message,
+                formatBytes(required), formatBytes(free)));
+
+        primaryButton.setText(R.string.storage_recheck);
+        primaryButton.setOnClickListener(v -> runPreflightChecks());
+        primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.close);
+        secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
+    // ── pre-flight ─────────────────────────────────────────────
+
+    private void runPreflightChecks() {
+        setUiState(UiState.CHECKING);
+        new Thread(() -> {
+            try {
+                existingPackage = findExistingPackage();
+
+                // Quick storage sanity check (200 MB estimated minimum)
+                long estimatedSize = 200L * 1024 * 1024;
+                long free = getFreeSpace();
+                if (free < estimatedSize * MIN_FREE_SPACE_FACTOR) {
+                    totalInstallBytes = estimatedSize;
+                    postToUi(() -> setUiState(UiState.STORAGE_LOW));
+                    return;
+                }
+
+                postToUi(() -> {
+                    if (existingPackage != null) {
+                        setUiState(UiState.ALREADY_INSTALLED);
+                    } else {
+                        startDownload();
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "Preflight failed", e);
+                lastFailureDetail = e.getMessage();
+                postToUi(() -> setUiState(UiState.NETWORK_ERROR));
+            }
+        }).start();
+    }
+
+    // ── download ───────────────────────────────────────────────
+
+    private void startDownload() {
+        setUiState(UiState.DOWNLOADING);
+
+        new Thread(() -> {
+            File outputFile = null;
+            try {
+                // Check network
+                if (!hasInternetConnection()) {
+                    throw new IOException("没有可用的网络连接");
+                }
+
+                outputFile = new File(getCacheDir(), "latest.apks");
+                downloadFile(APKS_DOWNLOAD_URL, outputFile);
+                apksFile = outputFile;
+
+                // Enumerate split APKs directly from the ZIP (no extraction)
+                List<SplitInfo> splits = new ArrayList<>();
+                Set<String> displayNames = new HashSet<>();
+
+                try (ZipFile zip = new ZipFile(outputFile)) {
+                    Enumeration<? extends ZipEntry> entries = zip.entries();
+                    while (entries.hasMoreElements()) {
+                        ZipEntry entry = entries.nextElement();
+                        if (entry.isDirectory()) continue;
+                        String entryName = entry.getName();
+                        if (!entryName.toLowerCase(Locale.ROOT).endsWith(".apk")) continue;
+
+                        long size = entry.getSize();
+                        if (size <= 0) {
+                            throw new ZipException("APK 分片大小无效: " + entryName);
+                        }
+
+                        String displayName = new File(entryName).getName();
+                        if (!displayNames.add(displayName)) {
+                            throw new ZipException("APKS 文件中存在重复 APK 文件名: " + displayName);
+                        }
+
+                        splits.add(new SplitInfo(displayName, entryName, size));
+                    }
+                }
+
+                if (splits.isEmpty()) {
+                    throw new ZipException("APKS 文件中未找到 APK 分片");
+                }
+
+                Collections.sort(splits, (left, right) -> left.displayName.compareTo(right.displayName));
+
+                splitNames = new String[splits.size()];
+                splitEntryNames = new String[splits.size()];
+                splitSizes = new long[splits.size()];
+                totalInstallBytes = 0;
+
+                for (int i = 0; i < splits.size(); i++) {
+                    SplitInfo split = splits.get(i);
+                    splitNames[i] = split.displayName;
+                    splitEntryNames[i] = split.entryName;
+                    splitSizes[i] = split.size;
+                    totalInstallBytes += split.size;
+                }
+
+                // Re-check storage with actual size
+                long free = getFreeSpace();
+                if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
+                    postToUi(() -> setUiState(UiState.STORAGE_LOW));
+                    return;
+                }
+
+                postToUi(() -> {
+                    if (existingPackage != null) {
+                        setUiState(UiState.CONFIRM_UPDATE);
+                    } else {
+                        setUiState(UiState.CONFIRM_INSTALL);
+                    }
+                });
+
+            } catch (Exception e) {
+                Log.e(TAG, "Download failed", e);
+                lastFailureDetail = e.getMessage();
+                if (outputFile != null) outputFile.delete();
+                apksFile = null;
+                UiState failureState = e instanceof ZipException
+                        ? UiState.CORRUPTED : UiState.NETWORK_ERROR;
+                postToUi(() -> setUiState(failureState));
+            }
+        }).start();
+    }
+
+    private void downloadFile(String urlString, File dest) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            conn.setRequestMethod("GET");
+            conn.connect();
+
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                throw new IOException("HTTP " + status);
+            }
+
+            long totalSize = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+                    ? conn.getContentLengthLong() : conn.getContentLength();
+            long downloaded = 0;
+            long startTime = System.currentTimeMillis();
+            long lastUiUpdate = 0;
+
+            byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE];
+
+            // Delete partial file if exists
+            if (dest.exists()) dest.delete();
+
+            try (InputStream in = conn.getInputStream();
+                 FileOutputStream out = new FileOutputStream(dest)) {
+
+                int count;
+                while ((count = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, count);
+                    downloaded += count;
+
+                    long now = System.currentTimeMillis();
+                    if (now - lastUiUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
+                        lastUiUpdate = now;
+                        long elapsed = now - startTime;
+                        long bps = elapsed > 0 ? downloaded * 1000 / elapsed : 0;
+                        postDownloadProgress(downloaded, totalSize, bps, elapsed);
+                    }
+                }
+            }
+
+            // Final progress update
+            long elapsed = System.currentTimeMillis() - startTime;
+            long bps = elapsed > 0 ? downloaded * 1000 / elapsed : 0;
+            postDownloadProgress(downloaded, totalSize, bps, elapsed);
+
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private void postDownloadProgress(long downloaded, long total,
+                                      long bytesPerSec, long elapsedMs) {
+        int pct = total > 0 ? (int) (downloaded * 100 / total) : 0;
+        String sizeText = total > 0
+                ? getString(R.string.downloading_progress,
+                formatBytes(downloaded), formatBytes(total))
+                : getString(R.string.downloading_progress_unknown, formatBytes(downloaded));
+        String speedText = formatBytes(bytesPerSec) + "/s";
+        String etaText = total > 0 && bytesPerSec > 0
+                ? formatETA(total - downloaded, bytesPerSec) : "";
+
+        postToUi(() -> {
+            if (currentState != UiState.DOWNLOADING) return;
+
+            // Crossfade from indeterminate to determinate on first real progress byte
+            if (indeterminateBar.getVisibility() == View.VISIBLE && downloaded > 0) {
+                crossfadeProgress(indeterminateBar, progressBar);
+            }
+
+            progressBar.setProgress(pct);
+            progressBar.setContentDescription(total > 0
+                    ? getString(R.string.cd_progress_download, pct)
+                    : getString(R.string.cd_progress_download_unknown, formatBytes(downloaded)));
+            messageText.setText(sizeText);
+
+            splitLabel.setText(getString(R.string.downloading_speed, speedText));
+            splitLabel.setVisibility(View.VISIBLE);
+
+            if (!etaText.isEmpty()) {
+                etaLabel.setText(etaText);
+                etaLabel.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    // ── install helpers ────────────────────────────────────────
+
+    @SuppressWarnings("deprecation")
+    private boolean hasInternetConnection() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        if (cm == null) return false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Network activeNetwork = cm.getActiveNetwork();
+            if (activeNetwork == null) return false;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(activeNetwork);
+            return hasInternetCapability(caps);
+        }
+
+        Network[] networks = cm.getAllNetworks();
+        for (Network network : networks) {
+            NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+            if (hasInternetCapability(caps)) return true;
+        }
+        return false;
+    }
+
+    private boolean hasInternetCapability(NetworkCapabilities caps) {
+        return caps != null
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+    }
+
+    @SuppressWarnings("deprecation")
+    private long getFreeSpace() {
+        StatFs stat = new StatFs(Environment.getDataDirectory().getAbsolutePath());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+            return stat.getAvailableBytes();
+        } else {
+            return (long) stat.getAvailableBlocks() * stat.getBlockSize();
+        }
+    }
+
+    private PackageInfo findExistingPackage() {
+        try {
+            return getPackageManager().getPackageInfo(GAME_PACKAGE_NAME, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+    // ── install flow ───────────────────────────────────────────
+
+    private void maybeRequestPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !getPackageManager().canRequestPackageInstalls()) {
+            Intent intent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+            unknownSourcesLauncher.launch(intent);
+            return;
+        }
+        maybeRequestNotificationPermissionThenInstall();
+    }
+
+    private void maybeRequestNotificationPermissionThenInstall() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            return;
+        }
+        startInstallSession();
+    }
+
+    private void startInstallSession() {
+        if (installing) return;
+        if (splitNames == null || splitEntryNames == null || splitNames.length == 0) {
+            lastFailureDetail = "没有可安装的文件";
+            setUiState(UiState.FAILED);
+            return;
+        }
+        installing = true;
+        setUiState(UiState.INSTALLING);
+
+        new Thread(() -> {
+            try {
+                writeInstallSession();
+            } catch (Exception e) {
+                Log.e(TAG, "Install failed", e);
+                String detail = e.getMessage() != null ? e.getMessage()
+                        : getString(R.string.unknown_error);
+                postToUi(() -> {
+                    clearInstallCallbackToken();
+                    lastFailureDetail = detail;
+                    setUiState(UiState.FAILED);
+                });
+            }
+        }).start();
+    }
+
+    private void writeInstallSession() throws Exception {
+        PackageInstaller pi = getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
+                PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+        params.setAppPackageName(GAME_PACKAGE_NAME);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            params.setInstallReason(PackageManager.INSTALL_REASON_USER);
+        }
+
+        int sessionId = pi.createSession(params);
+        PackageInstaller.Session session = null;
+        ZipFile zip = null;
+
+        try {
+            session = pi.openSession(sessionId);
+            zip = new ZipFile(apksFile);
+
+            byte[] buffer = new byte[SPLIT_BUFFER_SIZE];
+            long totalWritten = 0;
+            long startTime = System.currentTimeMillis();
+            long lastUiUpdate = 0;
+
+            for (int i = 0; i < splitNames.length; i++) {
+                String name = splitNames[i];
+                String entryName = splitEntryNames[i];
+                long splitSize = splitSizes[i];
+                long splitWritten = 0;
+
+                ZipEntry entry = zip.getEntry(entryName);
+                if (entry == null) {
+                    throw new IOException("Missing split in APKS: " + entryName);
+                }
+
+                try (InputStream input = zip.getInputStream(entry);
+                     OutputStream output = session.openWrite(name, 0, splitSize)) {
+
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        output.write(buffer, 0, count);
+                        splitWritten += count;
+                        totalWritten += count;
+
+                        long now = System.currentTimeMillis();
+                        if (now - lastUiUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
+                            lastUiUpdate = now;
+                            long elapsed = now - startTime;
+                            postProgress(totalWritten, totalInstallBytes,
+                                    i, name, splitWritten, splitSize, elapsed);
+                        }
+                    }
+                    session.fsync(output);
+                }
+
+                Log.d(TAG, String.format(Locale.ROOT,
+                        "Wrote split %d/%d: %s (%,d / %,d bytes)",
+                        i + 1, splitNames.length, name, splitWritten, splitSize));
+            }
+
+            // Final progress update
+            long elapsed = System.currentTimeMillis() - startTime;
+            postProgress(totalWritten, totalInstallBytes,
+                    splitNames.length - 1, splitNames[splitNames.length - 1],
+                    splitSizes[splitNames.length - 1], splitSizes[splitNames.length - 1], elapsed);
+
+            installCallbackToken = UUID.randomUUID().toString();
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit()
+                    .putString(PREF_INSTALL_CALLBACK_TOKEN, installCallbackToken)
+                    .apply();
+            Intent callback = new Intent(this, InstallerActivity.class)
+                    .setAction(ACTION_INSTALL_STATUS)
+                    .putExtra(EXTRA_INSTALL_CALLBACK_TOKEN, installCallbackToken);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                flags |= PendingIntent.FLAG_MUTABLE;
+            }
+            IntentSender sender = PendingIntent.getActivity(this, 0, callback, flags)
+                    .getIntentSender();
+            session.commit(sender);
+            session.close();
+            session = null;
+            zip.close();
+            zip = null;
+        } catch (Exception e) {
+            if (session != null) {
+                session.abandon();
+                try { session.close(); } catch (Exception ignored) {}
+            }
+            if (zip != null) {
+                try { zip.close(); } catch (Exception ignored) {}
+            }
+            throw e;
+        } finally {
+            if (zip != null) {
+                try { zip.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    // ── ZIP helpers ────────────────────────────────────────────
+
+    private static final class SplitInfo {
+        final String displayName;
+        final String entryName;
+        final long size;
+
+        SplitInfo(String displayName, String entryName, long size) {
+            this.displayName = displayName;
+            this.entryName = entryName;
+            this.size = size;
+        }
+    }
+
+    // ── post progress ──────────────────────────────────────
+
+    private void postProgress(long totalWritten, long totalSize,
+                              int splitIndex, String splitName,
+                              long splitWritten, long splitSize,
+                              long elapsedMs) {
+        int overallPct = totalSize > 0 ? (int) (totalWritten * 100 / totalSize) : 0;
+        int splitPct = splitSize > 0 ? (int) (splitWritten * 100 / splitSize) : 0;
+
+        String splitText = getString(R.string.installing_progress_split,
+                splitName, splitIndex + 1, splitNames.length);
+        String pctText = getString(R.string.installing_progress_pct, overallPct);
+
+        String etaText = "";
+        if (totalWritten > 0 && totalSize > 0) {
+            long remaining = totalSize - totalWritten;
+            long bytesPerSec = totalWritten * 1000 / Math.max(elapsedMs, 1);
+            if (bytesPerSec > 0) {
+                etaText = formatETA(remaining, bytesPerSec);
+            }
+        }
+
+        String finalEtaText = etaText;
+        postToUi(() -> {
+            if (currentState != UiState.INSTALLING) return;
+            titleText.setText(R.string.installing_title);
+            messageText.setText(pctText);
+
+            // Crossfade from indeterminate to determinate on first progress
+            if (indeterminateBar.getVisibility() == View.VISIBLE) {
+                crossfadeProgress(indeterminateBar, progressBar);
+            }
+
+            progressBar.setProgress(overallPct);
+            progressBar.setContentDescription(
+                    getString(R.string.cd_progress_install, overallPct));
+
+            splitLabel.setText(splitText);
+            splitLabel.setVisibility(View.VISIBLE);
+            splitLabel.setContentDescription(
+                    getString(R.string.cd_progress_split, splitName, splitPct));
+
+            if (!finalEtaText.isEmpty()) {
+                etaLabel.setText(finalEtaText);
+                etaLabel.setVisibility(View.VISIBLE);
+            }
+
+            // Update persistent notification
+            showInstallNotification(overallPct, false);
+        });
+    }
+
+    // ── install result callback ────────────────────────────────
+
+    private void clearInstallCallbackToken() {
+        installCallbackToken = null;
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .remove(PREF_INSTALL_CALLBACK_TOKEN)
+                .apply();
+    }
+
+    @SuppressWarnings("deprecation")
+    private boolean handleInstallStatus(Intent intent) {
+        if (!ACTION_INSTALL_STATUS.equals(intent.getAction())) {
+            return false;
+        }
+
+        String token = intent.getStringExtra(EXTRA_INSTALL_CALLBACK_TOKEN);
+        String expectedToken = installCallbackToken != null
+                ? installCallbackToken
+                : getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .getString(PREF_INSTALL_CALLBACK_TOKEN, null);
+        if (expectedToken == null || !expectedToken.equals(token)) {
+            Log.w(TAG, "Ignoring install status intent with invalid callback token");
+            return false;
+        }
+
+        int status = intent.getIntExtra(
+                PackageInstaller.EXTRA_STATUS,
+                PackageInstaller.STATUS_FAILURE);
+
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            setUiState(UiState.CONFIRM_SYSTEM);
+            Intent confirmation;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
+            } else {
+                confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+            }
+            if (confirmation != null) {
+                startActivity(confirmation);
+            }
+            return true;
+        }
+
+        if (status == PackageInstaller.STATUS_SUCCESS) {
+            clearInstallCallbackToken();
+            setUiState(UiState.SUCCESS);
+        } else {
+            clearInstallCallbackToken();
+            String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+            int legacyStatus = intent.getIntExtra(
+                    "android.content.pm.extra.LEGACY_STATUS", -999);
+            lastFailureDetail = parseInstallError(status, msg, legacyStatus);
+            setUiState(UiState.FAILED);
+        }
+
+        return true;
+    }
+
+    // ── error parsing ────────────────────────────────────────
+
+    /**
+     * Maps Android PackageInstaller error codes to user-friendly Chinese messages.
+     * Inspired by SAI's {@code AndroidPackageInstallerError} enum and
+     * {@code RootlessSaiPiBroadcastReceiver.parseError()}.
+     */
+    private String parseInstallError(int status, String rawMessage, int legacyStatus) {
+        // Match by legacy error code first (more specific)
+        switch (legacyStatus) {
+            case -1:  return getString(R.string.error_already_exists);
+            case -2:  return getString(R.string.error_invalid_apk);
+            case -4:  return getString(R.string.error_insufficient_storage);
+            case -7:  return getString(R.string.error_update_incompatible);
+            case -25: return getString(R.string.error_version_downgrade);
+            case -28: return getString(R.string.error_missing_split);
+            case -113: return getString(R.string.error_no_matching_abis);
+            case -118: return getString(R.string.error_bad_signature);
+        }
+
+        // Match by standard PackageInstaller status code
+        switch (status) {
+            case PackageInstaller.STATUS_FAILURE_ABORTED:
+                return getString(R.string.error_aborted);
+            case PackageInstaller.STATUS_FAILURE_BLOCKED:
+                String blocker = getString(R.string.error_blocked_device);
+                return getString(R.string.error_blocked, blocker);
+            case PackageInstaller.STATUS_FAILURE_CONFLICT:
+                return getString(R.string.error_conflict);
+            case PackageInstaller.STATUS_FAILURE_INCOMPATIBLE:
+                return getString(R.string.error_incompatible);
+            case PackageInstaller.STATUS_FAILURE_INVALID:
+                return getString(R.string.error_invalid_apk);
+            case PackageInstaller.STATUS_FAILURE_STORAGE:
+                return getString(R.string.error_storage);
+        }
+
+        // Fallback: raw message with code if available
+        if (rawMessage != null && !rawMessage.isEmpty()) {
+            return rawMessage;
+        }
+        return getString(R.string.error_generic, status);
+    }
+
+    // ── launch ─────────────────────────────────────────────────
+
+    private void launchGame() {
+        Intent launch = getPackageManager().getLaunchIntentForPackage(GAME_PACKAGE_NAME);
+        if (launch == null) {
+            launch = Intent.makeMainActivity(new ComponentName(
+                    GAME_PACKAGE_NAME, GAME_ACTIVITY_NAME));
+        }
+
+        try {
+            startActivity(launch);
+        } catch (ActivityNotFoundException e) {
+            Log.e(TAG, "Game launch failed", e);
+            lastFailureDetail = getString(R.string.failed_launch_not_found);
+            setUiState(UiState.FAILED);
+        }
+    }
+
+    // ── self-cleanup ───────────────────────────────────────────
+
+    private void requestSelfUninstall() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.cleanup_title)
+                .setMessage(R.string.cleanup_message)
+                .setPositiveButton(R.string.cleanup_confirm, (dialog, which) -> {
+                    Intent intent = new Intent(Intent.ACTION_DELETE,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                    finishAndRemoveTask();
+                })
+                .setNegativeButton(R.string.cleanup_keep, null)
+                .show();
+    }
+
+    // ── formatting utilities ───────────────────────────────────
+
+    private String formatBytes(long bytes) {
+        if (bytes >= 1024 * 1024) {
+            return String.format(Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024.0));
+        } else if (bytes >= 1024) {
+            return String.format(Locale.ROOT, "%.0f KB", bytes / 1024.0);
+        } else {
+            return bytes + " B";
+        }
+    }
+
+    private String formatETA(long remainingBytes, long bytesPerSec) {
+        if (bytesPerSec <= 0) return "";
+        long remainingSeconds = remainingBytes / bytesPerSec;
+
+        if (remainingSeconds <= 0) {
+            return getString(R.string.eta_less_than_minute);
+        } else if (remainingSeconds < 60) {
+            return getString(R.string.eta_seconds, remainingSeconds);
+        } else {
+            long minutes = remainingSeconds / 60;
+            long seconds = remainingSeconds % 60;
+            return getString(R.string.eta_minutes_seconds, minutes, seconds);
+        }
+    }
+
+    private String getAppLabel() {
+        try {
+            PackageInfo pi = findExistingPackage();
+            if (pi != null && pi.applicationInfo != null) {
+                CharSequence label = getPackageManager()
+                        .getApplicationLabel(pi.applicationInfo);
+                if (label != null && label.length() > 0) return label.toString();
+            }
+        } catch (Exception ignored) { /* fall through */ }
+        return GAME_PACKAGE_NAME;
+    }
+}

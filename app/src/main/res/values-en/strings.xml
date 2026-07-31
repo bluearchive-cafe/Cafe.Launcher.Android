@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Blue Cafe Installer</string>
+    <string name="checking_title">Checking system</string>
+    <string name="checking_message">Checking device and network status…</string>
+    <string name="already_installed_title">Game installed</string>
+    <string name="already_installed_message">%1$s (version %2$s) is already installed on this device.</string>
+    <string name="already_installed_launch">Launch game</string>
+    <string name="already_installed_reinstall">Reinstall</string>
+    <string name="downloading_title">Downloading</string>
+    <string name="downloading_preparing">Connecting to the download service…</string>
+    <string name="downloading_progress">%1$s / %2$s</string>
+    <string name="downloading_progress_unknown">Downloaded %1$s</string>
+    <string name="downloading_speed">%1$s</string>
+    <string name="download_retry">Download again</string>
+    <string name="network_error_title">Network error</string>
+    <string name="network_error_message">Download failed. Check your connection and try again.</string>
+    <string name="confirm_install_title">Ready to install</string>
+    <string name="confirm_install_message">About to install %1$s\nSize: %2$s\nFiles: %3$d</string>
+    <string name="confirm_install_button">Install</string>
+    <string name="confirm_cancel">Cancel</string>
+    <string name="confirm_update_title">New version found</string>
+    <string name="latest_version">Latest</string>
+    <string name="confirm_update_message">%1$s\nCurrent version: %2$s\nNew version: %3$s\nSize: %4$s\nFiles: %5$d</string>
+    <string name="confirm_update_button">Update</string>
+    <string name="confirm_update_warning">Updating may keep or clear app data. Back up important data first.</string>
+    <string name="installing_title">Installing</string>
+    <string name="installing_preparing">Preparing installation…</string>
+    <string name="installing_progress_split">%1$s (%2$d / %3$d)</string>
+    <string name="installing_progress_pct">%1$d%% complete</string>
+    <string name="installing_confirm_system">Confirm installation in the system prompt.</string>
+    <string name="eta_less_than_minute">Less than 1 minute</string>
+    <string name="eta_minutes_seconds">About %1$d min %2$d sec</string>
+    <string name="eta_seconds">About %1$d sec</string>
+    <string name="permission_title">Install permission required</string>
+    <string name="permission_message">Allow this app to install unknown apps, then return to continue.</string>
+    <string name="permission_grant">Open settings</string>
+    <string name="success_title">Installation complete</string>
+    <string name="success_message">%1$s was installed successfully.</string>
+    <string name="success_launch">Launch game</string>
+    <string name="success_cleanup">Uninstall installer</string>
+    <string name="cleanup_title">Uninstall installer?</string>
+    <string name="cleanup_message">Uninstall this installer? You can download it again later if needed.</string>
+    <string name="cleanup_confirm">Uninstall</string>
+    <string name="cleanup_keep">Keep</string>
+    <string name="cancel_confirm_title">Cancel operation?</string>
+    <string name="cancel_confirm_message">Cancel now? Download files and install progress will be lost.</string>
+    <string name="cancel_confirm_yes">Cancel</string>
+    <string name="cancel_confirm_no">Continue</string>
+    <string name="notif_channel_name">Install progress</string>
+    <string name="notif_channel_desc">Shows game installation progress</string>
+    <string name="notif_title">Installing game</string>
+    <string name="notif_message">Installation is in progress. Do not close the app.</string>
+    <string name="failed_title">Installation failed</string>
+    <string name="failed_message">Could not complete installation.</string>
+    <string name="failed_retry">Retry</string>
+    <string name="failed_details_show">Show details</string>
+    <string name="failed_details_hide">Hide details</string>
+    <string name="failed_launch_not_found">Could not find the game launch entry. The game may not be installed correctly.</string>
+    <string name="storage_low_title">Not enough storage</string>
+    <string name="storage_low_message">%1$s of free space is required, but only %2$s is available.\n\nFree up space and try again.</string>
+    <string name="storage_recheck">Check again</string>
+    <string name="corrupted_title">Install data corrupted</string>
+    <string name="corrupted_message">Error unpacking install file: %1$s</string>
+    <string name="close">Close</string>
+    <string name="unknown_error">An unknown error occurred.</string>
+    <string name="cd_app_icon">Installer icon</string>
+    <string name="cd_progress_install">Total install progress, %1$d%%</string>
+    <string name="cd_progress_download">Download progress, %1$d%%</string>
+    <string name="cd_progress_download_unknown">Downloaded %1$s</string>
+    <string name="cd_progress_split">Writing %1$s, %2$d%% complete</string>
+    <string name="cd_progress_indeterminate">Loading</string>
+    <string name="format_mb">%.1f MB</string>
+    <string name="format_kb">%.0f KB</string>
+    <string name="format_bytes">%d B</string>
+    <string name="error_update_incompatible">Signatures do not match. Uninstall the existing version and try again.</string>
+    <string name="error_insufficient_storage">Not enough device storage. Free up space and try again.</string>
+    <string name="error_version_downgrade">A newer version is installed. Cannot install an older version.</string>
+    <string name="error_conflict">The package conflicts with an installed app.</string>
+    <string name="error_invalid_apk">The install file is damaged. Download it again.</string>
+    <string name="error_blocked">Installation was blocked by %1$s. Disable it and try again.</string>
+    <string name="error_blocked_device">device restrictions</string>
+    <string name="error_storage">Not enough device storage.</string>
+    <string name="error_aborted">Installation was canceled.</string>
+    <string name="error_incompatible">This app version is not compatible with your device.</string>
+    <string name="error_already_exists">The app already exists and cannot be overwritten.</string>
+    <string name="error_missing_split">The install package is incomplete and missing required split files.</string>
+    <string name="error_no_matching_abis">The app architecture is not compatible with your device CPU.</string>
+    <string name="error_bad_signature">The install package signature is invalid.</string>
+    <string name="error_generic">Installation failed (error code: %1$d)</string>
+    <string name="nav_install">Install</string>
+    <string name="nav_help">Help</string>
+    <string name="nav_settings">Settings</string>
+    <string name="help_title">Install help</string>
+    <string name="help_body">1. The installer checks storage and target game status first.\n2. After download completes, confirm installation or update.\n3. Android 8 and above require permission to install unknown apps.\n4. When the system install confirmation appears, follow the prompt to continue.</string>
+    <string name="help_note">If installation fails, check network connection, storage, device architecture, and installed-version signature. The failure page’s “Show details” button shows the specific reason returned by the system.</string>
+    <string name="settings_title">Settings and about</string>
+    <string name="settings_theme_label">Dark theme</string>
+    <string name="settings_language_label">Language</string>
+    <string name="settings_target_package_label">Target game package</string>
+    <string name="settings_download_url_label">Download endpoint</string>
+    <string name="settings_installer_version_label">Installer version</string>
+    <string name="settings_version_format">%1$s (%2$d)</string>
+    <string-array name="theme_mode_options">
+        <item>Follow system</item>
+        <item>Always on</item>
+        <item>Always off</item>
+    </string-array>
+    <string-array name="language_options">
+        <item>Follow system</item>
+        <item>Simplified Chinese</item>
+        <item>Traditional Chinese</item>
+        <item>English</item>
+    </string-array>
+</resources>
