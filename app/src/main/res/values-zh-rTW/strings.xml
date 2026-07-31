@@ -32,6 +32,12 @@
     <string name="eta_less_than_minute">不到 1 分鐘</string>
     <string name="eta_minutes_seconds">約 %1$d 分鐘 %2$d 秒</string>
     <string name="eta_seconds">約 %1$d 秒</string>
+    <plurals name="eta_seconds_quantity">
+        <item quantity="other">約 %d 秒</item>
+    </plurals>
+    <plurals name="eta_minutes_quantity">
+        <item quantity="other">%d 分鐘</item>
+    </plurals>
     <string name="permission_title">需要安裝權限</string>
     <string name="permission_message">請允許此應用程式安裝未知來源應用程式，然後返回繼續。</string>
     <string name="permission_grant">前往設定</string>
@@ -88,6 +94,15 @@
     <string name="error_no_matching_abis">應用程式架構與您的裝置 CPU 不相容。</string>
     <string name="error_bad_signature">安裝套件簽章無效。</string>
     <string name="error_generic">安裝失敗（錯誤碼：%1$d）</string>
+    <string name="error_no_network">沒有可用的網路連線。</string>
+    <string name="error_no_install_files">沒有可安裝的檔案。</string>
+    <string name="error_manifest_too_large">發布清單過大。</string>
+    <string name="error_manifest_size_mismatch">下載大小與已簽名發布清單不一致。</string>
+    <string name="error_manifest_hash_mismatch">下載 SHA-256 與已簽名發布清單不一致。</string>
+    <string name="error_operation_cancelled">操作已取消。</string>
+    <string name="error_split_size_mismatch">APK 分割檔案大小與安裝包中繼資料不一致。</string>
+    <string name="error_invalid_confirmation_intent">無法驗證系統安裝確認視窗。</string>
+    <string name="notification_permission_denied_detail">安裝將繼續，但背景進度通知已停用。</string>
     <string name="nav_install">安裝</string>
     <string name="nav_help">說明</string>
     <string name="nav_settings">設定</string>
@@ -95,7 +110,10 @@
     <string name="help_body">1. 安裝器會先檢查儲存空間和目標遊戲安裝狀態。\n2. 下載完成後，請確認安裝或更新。\n3. Android 8 及以上系統需要允許安裝未知來源應用程式。\n4. 系統安裝確認視窗出現後，請依提示繼續。</string>
     <string name="help_note">如果安裝失敗，請先確認網路連線、儲存空間、裝置架構和已安裝版本簽章。失敗頁的「查看詳情」會顯示系統返回的具體原因。</string>
     <string name="settings_title">設定與關於</string>
-    <string name="settings_theme_label">深色主題</string>
+    <string name="settings_group_interface">介面</string>
+    <string name="settings_group_install_target">安裝目標</string>
+    <string name="settings_group_about">關於</string>
+    <string name="settings_theme_label">主題</string>
     <string name="settings_language_label">語言</string>
     <string name="settings_target_package_label">目標遊戲套件名稱</string>
     <string name="settings_download_url_label">下載端點</string>

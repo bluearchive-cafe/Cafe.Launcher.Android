@@ -1,33 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="false"
     android:fillViewport="true"
-    android:padding="24dp">
+    android:padding="@dimen/space_24">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:background="@drawable/surface_card"
-        android:elevation="4dp"
         android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="24dp">
-
-        <ImageView
-            android:id="@+id/appIcon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:importantForAccessibility="no"
-            android:src="@mipmap/ic_launcher" />
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
 
         <ImageView
             android:id="@+id/statusIcon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="16dp"
+            android:layout_width="@dimen/icon_size_48"
+            android:layout_height="@dimen/icon_size_48"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
             android:src="@drawable/ic_status_info" />
@@ -37,8 +29,7 @@
             style="@style/TextAppearance.Installer.Headline5"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:accessibilityHeading="true"
+            android:layout_marginTop="@dimen/space_16"
             android:gravity="center"
             android:textAlignment="center" />
 
@@ -47,19 +38,20 @@
             style="@style/TextAppearance.Installer.Body1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_12"
             android:gravity="center"
             android:lineSpacingExtra="4sp"
             android:textAlignment="center" />
 
         <TextView
             android:id="@+id/supportingText"
-            style="@style/TextAppearance.Installer.Body2"
+            style="@style/TextAppearance.Installer.Supporting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:gravity="start"
+            android:layout_marginTop="@dimen/space_16"
+            android:background="@drawable/detail_surface"
             android:lineSpacingExtra="2sp"
+            android:padding="@dimen/space_16"
             android:visibility="gone" />
 
         <ProgressBar
@@ -67,7 +59,7 @@
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="8dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="@dimen/space_24"
             android:contentDescription="@string/cd_progress_indeterminate"
             android:indeterminate="false"
             android:indeterminateTint="@color/primary"
@@ -81,7 +73,7 @@
             style="?android:attr/progressBarStyle"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="@dimen/space_24"
             android:contentDescription="@string/cd_progress_indeterminate"
             android:indeterminate="true"
             android:indeterminateTint="@color/primary"
@@ -92,7 +84,7 @@
             style="@style/TextAppearance.Installer.Caption"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="@dimen/space_12"
             android:accessibilityLiveRegion="polite"
             android:gravity="center"
             android:textAlignment="center"
@@ -103,7 +95,7 @@
             style="@style/TextAppearance.Installer.Caption"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="@dimen/space_4"
             android:gravity="center"
             android:textAlignment="center"
             android:visibility="gone" />
@@ -113,37 +105,35 @@
             style="@style/TextAppearance.Installer.Body2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/space_16"
             android:background="@drawable/detail_surface"
             android:fontFamily="monospace"
-            android:maxLines="8"
-            android:scrollbars="vertical"
+            android:padding="@dimen/space_16"
             android:textIsSelectable="true"
             android:visibility="gone" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/primaryButton"
             style="@style/Widget.Installer.Button.Contained"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="@dimen/space_24"
             android:visibility="gone" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/secondaryButton"
             style="@style/Widget.Installer.Button.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="@dimen/space_8"
             android:visibility="gone" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/tertiaryButton"
             style="@style/Widget.Installer.Button.Text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="@dimen/space_4"
             android:visibility="gone" />
-
     </LinearLayout>
 </ScrollView>

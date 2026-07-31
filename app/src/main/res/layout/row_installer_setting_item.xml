@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/Widget.Installer.SettingRow">
+
+    <ImageView
+        android:id="@+id/settingIcon"
+        android:layout_width="@dimen/icon_size_24"
+        android:layout_height="@dimen/icon_size_24"
+        android:layout_marginEnd="@dimen/space_16"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:tint="@color/icon_default" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/space_12"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/settingTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
+
+        <TextView
+            android:id="@+id/settingSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/space_2"
+            android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/settingChevron"
+        android:layout_width="@dimen/icon_size_24"
+        android:layout_height="@dimen/icon_size_24"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:visibility="gone"
+        app:tint="@color/icon_default" />
+</LinearLayout>

@@ -3,102 +3,198 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="false"
-    android:fillViewport="true"
-    android:padding="24dp">
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:background="@drawable/surface_card"
-        android:elevation="4dp"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
 
         <TextView
-            style="@style/TextAppearance.Installer.Headline5"
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_interface" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:accessibilityHeading="true"
-            android:text="@string/settings_title" />
+            android:layout_marginBottom="@dimen/space_6"
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
+
+            <LinearLayout
+                style="@style/Widget.Installer.SettingRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/space_12"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/themeSpinnerLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/themeSpinner"
+                        android:text="@string/settings_theme_label"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
+
+                    <TextView
+                        android:id="@+id/themeValueText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="@dimen/space_2"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
+                </LinearLayout>
+
+                <Spinner
+                    android:id="@+id/themeSpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target_min"
+                    android:spinnerMode="dropdown" />
+            </LinearLayout>
+
+            <LinearLayout
+                style="@style/Widget.Installer.SettingRow">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/space_12"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/languageSpinnerLabel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:labelFor="@id/languageSpinner"
+                        android:text="@string/settings_language_label"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
+
+                    <TextView
+                        android:id="@+id/languageValueText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="@dimen/space_2"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
+                </LinearLayout>
+
+                <Spinner
+                    android:id="@+id/languageSpinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/touch_target_min"
+                    android:spinnerMode="dropdown" />
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
-            style="@style/TextAppearance.Installer.Body1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/settings_theme_label" />
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_install_target" />
 
-        <Spinner
-            android:id="@+id/themeSpinner"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:contentDescription="@string/settings_theme_label"
-            android:minHeight="48dp"
-            android:spinnerMode="dropdown" />
+            android:layout_marginBottom="@dimen/space_6"
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
 
-        <TextView
-            style="@style/TextAppearance.Installer.Body1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/settings_language_label" />
+            <LinearLayout
+                style="@style/Widget.Installer.SettingRow">
 
-        <Spinner
-            android:id="@+id/languageSpinner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:contentDescription="@string/settings_language_label"
-            android:minHeight="48dp"
-            android:spinnerMode="dropdown" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
-        <TextView
-            style="@style/TextAppearance.Installer.Body1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="@string/settings_target_package_label" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_target_package_label"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
 
-        <TextView
-            android:id="@+id/settingsPackageName"
-            style="@style/TextAppearance.Installer.Body2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true" />
+                    <TextView
+                        android:id="@+id/settingsPackageName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:paddingTop="@dimen/space_2"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle"
+                        android:textIsSelectable="true" />
+                </LinearLayout>
+            </LinearLayout>
 
-        <TextView
-            style="@style/TextAppearance.Installer.Body1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/settings_download_url_label" />
+            <LinearLayout
+                style="@style/Widget.Installer.SettingRow">
 
-        <TextView
-            android:id="@+id/settingsDownloadUrl"
-            style="@style/TextAppearance.Installer.Body2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:fontFamily="monospace"
-            android:textIsSelectable="true" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
-        <TextView
-            style="@style/TextAppearance.Installer.Body1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/settings_installer_version_label" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_download_url_label"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
+
+                    <TextView
+                        android:id="@+id/settingsDownloadUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:paddingTop="@dimen/space_2"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle"
+                        android:textIsSelectable="true" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/settingsInstallerVersion"
-            style="@style/TextAppearance.Installer.Body2"
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_about" />
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
 
+            <LinearLayout
+                style="@style/Widget.Installer.SettingRow">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_installer_version_label"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
+
+                    <TextView
+                        android:id="@+id/settingsInstallerVersion"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="@dimen/space_2"
+                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

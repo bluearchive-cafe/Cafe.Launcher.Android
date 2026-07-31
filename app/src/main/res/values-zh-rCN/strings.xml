@@ -32,6 +32,12 @@
     <string name="eta_less_than_minute">不到 1 分钟</string>
     <string name="eta_minutes_seconds">约 %1$d 分钟 %2$d 秒</string>
     <string name="eta_seconds">约 %1$d 秒</string>
+    <plurals name="eta_seconds_quantity">
+        <item quantity="other">约 %d 秒</item>
+    </plurals>
+    <plurals name="eta_minutes_quantity">
+        <item quantity="other">%d 分钟</item>
+    </plurals>
     <string name="permission_title">需要安装权限</string>
     <string name="permission_message">请允许此应用安装来自未知来源的应用，然后返回继续。</string>
     <string name="permission_grant">前往设置</string>
@@ -88,6 +94,15 @@
     <string name="error_no_matching_abis">应用的架构与您的设备 CPU 不兼容。</string>
     <string name="error_bad_signature">安装包签名无效。</string>
     <string name="error_generic">安装失败（错误码：%1$d）</string>
+    <string name="error_no_network">没有可用的网络连接。</string>
+    <string name="error_no_install_files">没有可安装的文件。</string>
+    <string name="error_manifest_too_large">发布清单过大。</string>
+    <string name="error_manifest_size_mismatch">下载大小与已签名发布清单不一致。</string>
+    <string name="error_manifest_hash_mismatch">下载 SHA-256 与已签名发布清单不一致。</string>
+    <string name="error_operation_cancelled">操作已取消。</string>
+    <string name="error_split_size_mismatch">APK 分片大小与安装包元数据不一致。</string>
+    <string name="error_invalid_confirmation_intent">无法验证系统安装确认窗口。</string>
+    <string name="notification_permission_denied_detail">安装将继续，但后台进度通知已禁用。</string>
     <string name="nav_install">安装</string>
     <string name="nav_help">帮助</string>
     <string name="nav_settings">设置</string>
@@ -95,7 +110,10 @@
     <string name="help_body">1. 安装器会先检查存储空间和目标游戏安装状态。\n2. 下载完成后，请确认安装或更新。\n3. Android 8 及以上系统需要允许安装未知来源应用。\n4. 系统安装确认弹窗出现后，请按提示继续。</string>
     <string name="help_note">如果安装失败，请先确认网络连接、存储空间、设备架构和已安装版本签名。失败页的“查看详情”会显示系统返回的具体原因。</string>
     <string name="settings_title">设置与关于</string>
-    <string name="settings_theme_label">深色主题</string>
+    <string name="settings_group_interface">界面</string>
+    <string name="settings_group_install_target">安装目标</string>
+    <string name="settings_group_about">关于</string>
+    <string name="settings_theme_label">主题</string>
     <string name="settings_language_label">语言</string>
     <string name="settings_target_package_label">目标游戏包名</string>
     <string name="settings_download_url_label">下载端点</string>

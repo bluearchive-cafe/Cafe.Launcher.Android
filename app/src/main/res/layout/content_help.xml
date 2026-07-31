@@ -4,29 +4,26 @@
     android:layout_height="match_parent"
     android:clipToPadding="false"
     android:fillViewport="true"
-    android:padding="24dp">
+    android:padding="@dimen/space_24">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:background="@drawable/surface_card"
-        android:elevation="4dp"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
 
         <TextView
             style="@style/TextAppearance.Installer.Headline5"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:accessibilityHeading="true"
             android:text="@string/help_title" />
 
         <TextView
             style="@style/TextAppearance.Installer.Body1"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/space_16"
             android:lineSpacingExtra="4sp"
             android:text="@string/help_body" />
 
@@ -34,11 +31,10 @@
             style="@style/TextAppearance.Installer.Body2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="@dimen/space_16"
             android:background="@drawable/detail_surface"
             android:lineSpacingExtra="4sp"
-            android:padding="16dp"
+            android:padding="@dimen/space_16"
             android:text="@string/help_note" />
-
     </LinearLayout>
 </ScrollView>

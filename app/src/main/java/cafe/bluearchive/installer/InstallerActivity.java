@@ -10,11 +10,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -23,19 +21,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.os.LocaleList;
 import android.os.Looper;
 import android.os.StatFs;
 import android.provider.Settings;
 import android.provider.Settings.Global;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -49,14 +44,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -65,7 +56,12 @@ import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.NotificationCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.navigation.NavigationView;
 
@@ -91,19 +87,7 @@ public final class InstallerActivity extends ComponentActivity {
             "cafe.bluearchive.installer.INSTALL_STATUS";
     private static final String EXTRA_INSTALL_CALLBACK_TOKEN =
             "cafe.bluearchive.installer.extra.INSTALL_CALLBACK_TOKEN";
-    private static final String PREFS_NAME = "installer_state";
     private static final String PREF_INSTALL_CALLBACK_TOKEN = "install_callback_token";
-    private static final String PREF_THEME_MODE = "theme_mode";
-    private static final String PREF_LANGUAGE_MODE = "language_mode";
-
-    private static final String THEME_SYSTEM = "system";
-    private static final String THEME_DARK = "dark";
-    private static final String THEME_LIGHT = "light";
-
-    private static final String LANGUAGE_SYSTEM = "system";
-    private static final String LANGUAGE_ZH_HANS = "zh-Hans";
-    private static final String LANGUAGE_ZH_HANT = "zh-Hant";
-    private static final String LANGUAGE_EN = "en";
 
     // Notification
     private static final String CHANNEL_ID = "install_progress";
@@ -112,6 +96,8 @@ public final class InstallerActivity extends ComponentActivity {
     // Injected by the build system
     private static final String GAME_PACKAGE_NAME = BuildConfig.GAME_PACKAGE_NAME;
     private static final String GAME_ACTIVITY_NAME = BuildConfig.GAME_ACTIVITY_NAME;
+    private static final String APKS_MANIFEST_URL = BuildConfig.APKS_MANIFEST_URL;
+    private static final String RELEASE_MANIFEST_PUBLIC_KEY = BuildConfig.RELEASE_MANIFEST_PUBLIC_KEY;
 
     // CDN
     private static final String APKS_DOWNLOAD_URL = BuildConfig.APKS_DOWNLOAD_URL;
@@ -154,6 +140,7 @@ public final class InstallerActivity extends ComponentActivity {
     private Button primaryButton;
     private Button secondaryButton;
     private Button tertiaryButton;
+    private MaterialToolbar topAppBar;
     private BottomNavigationView bottomNavigation;
     private NavigationView navigationView;
     private View installContent;
@@ -162,6 +149,8 @@ public final class InstallerActivity extends ComponentActivity {
     private TextView settingsPackageName;
     private TextView settingsDownloadUrl;
     private TextView settingsInstallerVersion;
+    private TextView themeValueText;
+    private TextView languageValueText;
     private Spinner themeSpinner;
     private Spinner languageSpinner;
 
@@ -170,9 +159,8 @@ public final class InstallerActivity extends ComponentActivity {
     private UiState currentState = UiState.CHECKING;
     private boolean installing;
     private PackageInfo existingPackage;
-    private String[] splitNames;
-    private String[] splitEntryNames;
-    private long[] splitSizes;
+    private ApksArchive apksArchive;
+    private ReleaseManifest releaseManifest;
     private long totalInstallBytes;
     private boolean detailExpanded;
     private String lastFailureDetail;
@@ -181,6 +169,9 @@ public final class InstallerActivity extends ComponentActivity {
 
     // Download / extract intermediates
     private File apksFile;
+    private final AtomicBoolean operationCancelled = new AtomicBoolean(false);
+    private volatile int activeSessionId = -1;
+    private volatile PackageInstaller.Session activeSession;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private NotificationManager notificationManager;
@@ -192,61 +183,21 @@ public final class InstallerActivity extends ComponentActivity {
 
     @Override
     protected void attachBaseContext(Context newBase) {
-        super.attachBaseContext(applyUserConfiguration(newBase));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static Context applyUserConfiguration(Context base) {
-        SharedPreferences prefs = base.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String themeMode = prefs.getString(PREF_THEME_MODE, THEME_SYSTEM);
-        String languageMode = prefs.getString(PREF_LANGUAGE_MODE, LANGUAGE_SYSTEM);
-
-        Configuration config = new Configuration(base.getResources().getConfiguration());
-
-        if (THEME_DARK.equals(themeMode)) {
-            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
-                    | Configuration.UI_MODE_NIGHT_YES;
-        } else if (THEME_LIGHT.equals(themeMode)) {
-            config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
-                    | Configuration.UI_MODE_NIGHT_NO;
-        }
-
-        Locale locale = localeForLanguageMode(languageMode);
-        if (locale != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                LocaleList locales = new LocaleList(locale);
-                LocaleList.setDefault(locales);
-                config.setLocale(locale);
-                config.setLocales(locales);
-            } else {
-                Locale.setDefault(locale);
-                config.locale = locale;
-            }
-        }
-
-        base.getResources().updateConfiguration(config, base.getResources().getDisplayMetrics());
-        return base.createConfigurationContext(config);
-    }
-
-    private static Locale localeForLanguageMode(String languageMode) {
-        if (LANGUAGE_ZH_HANS.equals(languageMode)) {
-            return Locale.SIMPLIFIED_CHINESE;
-        }
-        if (LANGUAGE_ZH_HANT.equals(languageMode)) {
-            return Locale.TRADITIONAL_CHINESE;
-        }
-        if (LANGUAGE_EN.equals(languageMode)) {
-            return Locale.ENGLISH;
-        }
-        return null;
+        super.attachBaseContext(InstallerPreferences.applyUserConfiguration(newBase));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         destroyed = false;
         super.onCreate(savedInstanceState);
+
+        // Draw behind system bars and apply their insets to the app chrome so
+        // fixed-height bars keep their content out of status/navigation areas.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
         setContentView(R.layout.activity_installer);
         bindViews();
+        applySystemBarInsets();
         bindNavigation();
         registerActivityResultLaunchers();
         createNotificationChannel();
@@ -287,7 +238,12 @@ public final class InstallerActivity extends ComponentActivity {
 
         notificationPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestPermission(),
-                granted -> startInstallSession());
+                granted -> {
+                    if (!granted) {
+                        lastFailureDetail = getString(R.string.notification_permission_denied_detail);
+                    }
+                    startInstallSession();
+                });
     }
 
     @Override
@@ -398,6 +354,8 @@ public final class InstallerActivity extends ComponentActivity {
                 .setTitle(R.string.cancel_confirm_title)
                 .setMessage(R.string.cancel_confirm_message)
                 .setPositiveButton(R.string.cancel_confirm_yes, (d, w) -> {
+                    operationCancelled.set(true);
+                    abandonActiveSession();
                     installing = false;
                     cleanupTempFiles();
                     finishAndRemoveTask();
@@ -461,119 +419,99 @@ public final class InstallerActivity extends ComponentActivity {
         primaryButton = findViewById(R.id.primaryButton);
         secondaryButton = findViewById(R.id.secondaryButton);
         tertiaryButton = findViewById(R.id.tertiaryButton);
-        errorDetail.setMovementMethod(new ScrollingMovementMethod());
 
         installContent = findViewById(R.id.installContent);
         helpContent = findViewById(R.id.helpContent);
         settingsContent = findViewById(R.id.settingsContent);
+        topAppBar = findViewById(R.id.topAppBar);
         bottomNavigation = findViewById(R.id.bottomNavigation);
         navigationView = findViewById(R.id.navigationView);
         settingsPackageName = findViewById(R.id.settingsPackageName);
         settingsDownloadUrl = findViewById(R.id.settingsDownloadUrl);
         settingsInstallerVersion = findViewById(R.id.settingsInstallerVersion);
+        themeValueText = findViewById(R.id.themeValueText);
+        languageValueText = findViewById(R.id.languageValueText);
         themeSpinner = findViewById(R.id.themeSpinner);
         languageSpinner = findViewById(R.id.languageSpinner);
         bindSettingsContent();
+        ViewCompat.setAccessibilityHeading(titleText, true);
+    }
+
+    private void applySystemBarInsets() {
+        View root = getWindow().getDecorView();
+        InsetsAwareView topBarInsets = InsetsAwareView.from(topAppBar);
+        InsetsAwareView bottomBarInsets = InsetsAwareView.from(bottomNavigation);
+        InsetsAwareView navigationViewInsets = InsetsAwareView.from(navigationView);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, windowInsets) -> {
+            Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            if (topBarInsets != null) {
+                topBarInsets.apply(systemBars.top, 0);
+            }
+            if (bottomBarInsets != null) {
+                bottomBarInsets.apply(0, systemBars.bottom);
+            }
+            if (navigationViewInsets != null) {
+                navigationViewInsets.apply(systemBars.top, systemBars.bottom);
+            }
+
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    private static final class InsetsAwareView {
+        private final View view;
+        private final int paddingLeft;
+        private final int paddingTop;
+        private final int paddingRight;
+        private final int paddingBottom;
+        private final int height;
+
+        private InsetsAwareView(View view) {
+            this.view = view;
+            paddingLeft = view.getPaddingLeft();
+            paddingTop = view.getPaddingTop();
+            paddingRight = view.getPaddingRight();
+            paddingBottom = view.getPaddingBottom();
+            ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+            height = layoutParams != null ? layoutParams.height : ViewGroup.LayoutParams.WRAP_CONTENT;
+        }
+
+        static InsetsAwareView from(View view) {
+            return view == null ? null : new InsetsAwareView(view);
+        }
+
+        void apply(int topInset, int bottomInset) {
+            if (view == null) return;
+            view.setPadding(paddingLeft, paddingTop + topInset, paddingRight, paddingBottom + bottomInset);
+
+            if (height >= 0) {
+                ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+                if (layoutParams != null) {
+                    layoutParams.height = height + topInset + bottomInset;
+                    view.setLayoutParams(layoutParams);
+                }
+            }
+        }
     }
 
     private void bindSettingsContent() {
-        if (settingsPackageName != null) {
-            settingsPackageName.setText(GAME_PACKAGE_NAME);
-        }
-        if (settingsDownloadUrl != null) {
-            settingsDownloadUrl.setText(APKS_DOWNLOAD_URL);
-        }
-        if (settingsInstallerVersion != null) {
-            settingsInstallerVersion.setText(getString(R.string.settings_version_format,
-                    BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE));
-        }
-        bindPreferenceSpinner(
+        InstallerSettingsController settingsController = new InstallerSettingsController(
+                this,
+                settingsPackageName,
+                settingsDownloadUrl,
+                settingsInstallerVersion,
+                themeValueText,
+                languageValueText,
                 themeSpinner,
-                R.array.theme_mode_options,
-                getThemeMode(),
-                this::themeModeToIndex,
-                this::indexToThemeMode,
-                PREF_THEME_MODE);
-        bindPreferenceSpinner(
-                languageSpinner,
-                R.array.language_options,
-                getLanguageMode(),
-                this::languageModeToIndex,
-                this::indexToLanguageMode,
-                PREF_LANGUAGE_MODE);
-    }
-
-    private void bindPreferenceSpinner(Spinner spinner, int labelsResId, String currentValue,
-                                       PreferenceIndexMapper toIndex,
-                                       PreferenceValueMapper toValue,
-                                       String preferenceKey) {
-        if (spinner == null) return;
-
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-                this, labelsResId, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-        spinner.setSelection(toIndex.indexFor(currentValue), false);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                savePreferenceAndRecreate(preferenceKey, toValue.valueFor(position));
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) { }
-        });
-    }
-
-    private String getThemeMode() {
-        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getString(PREF_THEME_MODE, THEME_SYSTEM);
-    }
-
-    private String getLanguageMode() {
-        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .getString(PREF_LANGUAGE_MODE, LANGUAGE_SYSTEM);
-    }
-
-    private void savePreferenceAndRecreate(String key, String value) {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        if (value.equals(prefs.getString(key, null))) return;
-        prefs.edit().putString(key, value).apply();
-        recreate();
-    }
-
-    private int themeModeToIndex(String value) {
-        if (THEME_DARK.equals(value)) return 1;
-        if (THEME_LIGHT.equals(value)) return 2;
-        return 0;
-    }
-
-    private String indexToThemeMode(int index) {
-        if (index == 1) return THEME_DARK;
-        if (index == 2) return THEME_LIGHT;
-        return THEME_SYSTEM;
-    }
-
-    private int languageModeToIndex(String value) {
-        if (LANGUAGE_ZH_HANS.equals(value)) return 1;
-        if (LANGUAGE_ZH_HANT.equals(value)) return 2;
-        if (LANGUAGE_EN.equals(value)) return 3;
-        return 0;
-    }
-
-    private String indexToLanguageMode(int index) {
-        if (index == 1) return LANGUAGE_ZH_HANS;
-        if (index == 2) return LANGUAGE_ZH_HANT;
-        if (index == 3) return LANGUAGE_EN;
-        return LANGUAGE_SYSTEM;
-    }
-
-    private interface PreferenceIndexMapper {
-        int indexFor(String value);
-    }
-
-    private interface PreferenceValueMapper {
-        String valueFor(int index);
+                languageSpinner);
+        settingsController.bind(
+                GAME_PACKAGE_NAME,
+                APKS_DOWNLOAD_URL,
+                BuildConfig.VERSION_NAME,
+                BuildConfig.VERSION_CODE);
     }
 
     private void bindNavigation() {
@@ -616,6 +554,20 @@ public final class InstallerActivity extends ComponentActivity {
         if (navigationView != null) {
             navigationView.setCheckedItem(itemId);
         }
+        updateToolbarTitle(itemId);
+    }
+
+    private void updateToolbarTitle(int itemId) {
+        if (topAppBar == null) return;
+        int titleResId;
+        if (itemId == R.id.nav_help) {
+            titleResId = R.string.help_title;
+        } else if (itemId == R.id.nav_settings) {
+            titleResId = R.string.settings_title;
+        } else {
+            titleResId = R.string.app_name;
+        }
+        topAppBar.setTitle(titleResId);
     }
 
     // ── temp file cleanup ──────────────────────────────────────
@@ -623,6 +575,22 @@ public final class InstallerActivity extends ComponentActivity {
     private void cleanupTempFiles() {
         if (apksFile != null && apksFile.exists()) {
             apksFile.delete();
+        }
+    }
+
+    private void abandonActiveSession() {
+        PackageInstaller.Session session = activeSession;
+        activeSession = null;
+        if (session != null) {
+            try { session.abandon(); } catch (Exception ignored) {}
+            try { session.close(); } catch (Exception ignored) {}
+        }
+        int sessionId = activeSessionId;
+        activeSessionId = -1;
+        if (sessionId >= 0) {
+            try {
+                getPackageManager().getPackageInstaller().abandonSession(sessionId);
+            } catch (Exception ignored) { }
         }
     }
 
@@ -647,6 +615,9 @@ public final class InstallerActivity extends ComponentActivity {
         primaryButton.setEnabled(true);
         secondaryButton.setEnabled(true);
         tertiaryButton.setEnabled(true);
+        primaryButton.setContentDescription(null);
+        secondaryButton.setContentDescription(null);
+        tertiaryButton.setContentDescription(null);
         messageText.setGravity(Gravity.CENTER);
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         statusIcon.setImageResource(R.drawable.ic_status_info);
@@ -751,7 +722,7 @@ public final class InstallerActivity extends ComponentActivity {
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         titleText.setText(R.string.confirm_install_title);
         messageText.setText(getString(R.string.confirm_install_message,
-                getAppLabel(), formatBytes(totalInstallBytes), splitNames.length));
+                getAppLabel(), formatBytes(totalInstallBytes), apksArchive.splitCount()));
 
         primaryButton.setText(R.string.confirm_install_button);
         primaryButton.setOnClickListener(v -> {
@@ -772,7 +743,7 @@ public final class InstallerActivity extends ComponentActivity {
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         titleText.setText(R.string.confirm_update_title);
         messageText.setText(getString(R.string.confirm_update_message,
-                getAppLabel(), oldVer, newVer, formatBytes(totalInstallBytes), splitNames.length));
+                getAppLabel(), oldVer, newVer, formatBytes(totalInstallBytes), apksArchive.splitCount()));
         supportingText.setText(R.string.confirm_update_warning);
         supportingText.setVisibility(View.VISIBLE);
 
@@ -797,10 +768,14 @@ public final class InstallerActivity extends ComponentActivity {
 
         primaryButton.setText(R.string.permission_grant);
         primaryButton.setOnClickListener(v -> {
-            Intent intent = new Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:" + getPackageName()));
-            unknownSourcesLauncher.launch(intent);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent intent = new Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + getPackageName()));
+                unknownSourcesLauncher.launch(intent);
+            } else {
+                maybeRequestNotificationPermissionThenInstall();
+            }
         });
         primaryButton.setVisibility(View.VISIBLE);
 
@@ -813,7 +788,8 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void showInstalling() {
         titleText.setText(R.string.installing_title);
-        messageText.setText(R.string.installing_preparing);
+        messageText.setText(lastFailureDetail != null
+                ? lastFailureDetail : getString(R.string.installing_preparing));
         indeterminateBar.setVisibility(View.VISIBLE);
         indeterminateBar.setAlpha(1f);
         indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
@@ -869,9 +845,8 @@ public final class InstallerActivity extends ComponentActivity {
             detailExpanded = false;
             lastFailureDetail = null;
             cleanupTempFiles();
-            splitNames = null;
-            splitEntryNames = null;
-            splitSizes = null;
+            apksArchive = null;
+            releaseManifest = null;
             totalInstallBytes = 0;
             startDownload();
         });
@@ -948,66 +923,35 @@ public final class InstallerActivity extends ComponentActivity {
     // ── download ───────────────────────────────────────────────
 
     private void startDownload() {
+        operationCancelled.set(false);
         setUiState(UiState.DOWNLOADING);
 
         new Thread(() -> {
             File outputFile = null;
             try {
-                // Check network
                 if (!hasInternetConnection()) {
-                    throw new IOException("没有可用的网络连接");
+                    throw new IOException(getString(R.string.error_no_network));
                 }
+
+                ReleaseManifest manifest = fetchAndVerifyReleaseManifest();
+                releaseManifest = manifest;
 
                 outputFile = new File(getCacheDir(), "latest.apks");
-                downloadFile(APKS_DOWNLOAD_URL, outputFile);
+                ApksDownloader downloader = new ApksDownloader(
+                        DownloadLimits.defaults(), DOWNLOAD_BUFFER_SIZE, PROGRESS_UPDATE_INTERVAL_MS);
+                ApksDownloader.Result result = downloader.download(
+                        manifest.apksUrl, outputFile, operationCancelled, this::postDownloadProgress);
+                if (manifest.apksSize != result.bytes) {
+                    throw new IOException(getString(R.string.error_manifest_size_mismatch));
+                }
+                if (!manifest.apksSha256.equals(result.sha256)) {
+                    throw new IOException(getString(R.string.error_manifest_hash_mismatch));
+                }
+
                 apksFile = outputFile;
+                apksArchive = new ApksArchiveParser(DownloadLimits.defaults()).parse(outputFile);
+                totalInstallBytes = apksArchive.totalBytes();
 
-                // Enumerate split APKs directly from the ZIP (no extraction)
-                List<SplitInfo> splits = new ArrayList<>();
-                Set<String> displayNames = new HashSet<>();
-
-                try (ZipFile zip = new ZipFile(outputFile)) {
-                    Enumeration<? extends ZipEntry> entries = zip.entries();
-                    while (entries.hasMoreElements()) {
-                        ZipEntry entry = entries.nextElement();
-                        if (entry.isDirectory()) continue;
-                        String entryName = entry.getName();
-                        if (!entryName.toLowerCase(Locale.ROOT).endsWith(".apk")) continue;
-
-                        long size = entry.getSize();
-                        if (size <= 0) {
-                            throw new ZipException("APK 分片大小无效: " + entryName);
-                        }
-
-                        String displayName = new File(entryName).getName();
-                        if (!displayNames.add(displayName)) {
-                            throw new ZipException("APKS 文件中存在重复 APK 文件名: " + displayName);
-                        }
-
-                        splits.add(new SplitInfo(displayName, entryName, size));
-                    }
-                }
-
-                if (splits.isEmpty()) {
-                    throw new ZipException("APKS 文件中未找到 APK 分片");
-                }
-
-                Collections.sort(splits, (left, right) -> left.displayName.compareTo(right.displayName));
-
-                splitNames = new String[splits.size()];
-                splitEntryNames = new String[splits.size()];
-                splitSizes = new long[splits.size()];
-                totalInstallBytes = 0;
-
-                for (int i = 0; i < splits.size(); i++) {
-                    SplitInfo split = splits.get(i);
-                    splitNames[i] = split.displayName;
-                    splitEntryNames[i] = split.entryName;
-                    splitSizes[i] = split.size;
-                    totalInstallBytes += split.size;
-                }
-
-                // Re-check storage with actual size
                 long free = getFreeSpace();
                 if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
                     postToUi(() -> setUiState(UiState.STORAGE_LOW));
@@ -1027,11 +971,65 @@ public final class InstallerActivity extends ComponentActivity {
                 lastFailureDetail = e.getMessage();
                 if (outputFile != null) outputFile.delete();
                 apksFile = null;
+                apksArchive = null;
                 UiState failureState = e instanceof ZipException
                         ? UiState.CORRUPTED : UiState.NETWORK_ERROR;
                 postToUi(() -> setUiState(failureState));
             }
         }).start();
+    }
+
+    private ReleaseManifest fetchAndVerifyReleaseManifest() throws Exception {
+        String manifestJson = downloadText(APKS_MANIFEST_URL, DownloadLimits.defaults().maxArchiveBytes);
+        ReleaseManifestVerifier verifier = new ReleaseManifestVerifier(
+                GAME_PACKAGE_NAME, RELEASE_MANIFEST_PUBLIC_KEY);
+        return verifier.verify(manifestJson);
+    }
+
+    private String downloadText(String urlString, long maxBytes) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(30000);
+            conn.setRequestMethod("GET");
+            conn.connect();
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                throw new IOException("HTTP " + status);
+            }
+            long total = contentLength(conn);
+            if (total > maxBytes) {
+                throw new IOException(getString(R.string.error_manifest_too_large));
+            }
+            byte[] buffer = new byte[16 * 1024];
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            try (InputStream in = conn.getInputStream()) {
+                int count;
+                long read = 0;
+                while ((count = in.read(buffer)) != -1) {
+                    read += count;
+                    if (read > maxBytes) {
+                        throw new IOException(getString(R.string.error_manifest_too_large));
+                    }
+                    out.write(buffer, 0, count);
+                }
+            }
+            return out.toString(StandardCharsets.UTF_8.name());
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static long contentLength(HttpURLConnection conn) {
+        String value = conn.getHeaderField("Content-Length");
+        if (value == null) return -1;
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     private void downloadFile(String urlString, File dest) throws IOException {
@@ -1102,12 +1100,14 @@ public final class InstallerActivity extends ComponentActivity {
         postToUi(() -> {
             if (currentState != UiState.DOWNLOADING) return;
 
-            // Crossfade from indeterminate to determinate on first real progress byte
-            if (indeterminateBar.getVisibility() == View.VISIBLE && downloaded > 0) {
+            // Crossfade from indeterminate to determinate only when the server reports a total size.
+            if (total > 0 && indeterminateBar.getVisibility() == View.VISIBLE && downloaded > 0) {
                 crossfadeProgress(indeterminateBar, progressBar);
             }
 
-            progressBar.setProgress(pct);
+            if (total > 0) {
+                progressBar.setProgress(pct);
+            }
             progressBar.setContentDescription(total > 0
                     ? getString(R.string.cd_progress_download, pct)
                     : getString(R.string.cd_progress_download_unknown, formatBytes(downloaded)));
@@ -1194,8 +1194,8 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void startInstallSession() {
         if (installing) return;
-        if (splitNames == null || splitEntryNames == null || splitNames.length == 0) {
-            lastFailureDetail = "没有可安装的文件";
+        if (apksArchive == null || apksArchive.splitCount() == 0) {
+            lastFailureDetail = getString(R.string.error_no_install_files);
             setUiState(UiState.FAILED);
             return;
         }
@@ -1228,11 +1228,13 @@ public final class InstallerActivity extends ComponentActivity {
         }
 
         int sessionId = pi.createSession(params);
+        activeSessionId = sessionId;
         PackageInstaller.Session session = null;
         ZipFile zip = null;
 
         try {
             session = pi.openSession(sessionId);
+            activeSession = session;
             zip = new ZipFile(apksFile);
 
             byte[] buffer = new byte[SPLIT_BUFFER_SIZE];
@@ -1240,10 +1242,14 @@ public final class InstallerActivity extends ComponentActivity {
             long startTime = System.currentTimeMillis();
             long lastUiUpdate = 0;
 
-            for (int i = 0; i < splitNames.length; i++) {
-                String name = splitNames[i];
-                String entryName = splitEntryNames[i];
-                long splitSize = splitSizes[i];
+            for (int i = 0; i < apksArchive.splitCount(); i++) {
+                if (operationCancelled.get()) {
+                    throw new IOException(getString(R.string.error_operation_cancelled));
+                }
+                ApksArchive.Split split = apksArchive.splitAt(i);
+                String name = split.displayName;
+                String entryName = split.entryName;
+                long splitSize = split.size;
                 long splitWritten = 0;
 
                 ZipEntry entry = zip.getEntry(entryName);
@@ -1256,6 +1262,9 @@ public final class InstallerActivity extends ComponentActivity {
 
                     int count;
                     while ((count = input.read(buffer)) != -1) {
+                        if (operationCancelled.get()) {
+                            throw new IOException(getString(R.string.error_operation_cancelled));
+                        }
                         output.write(buffer, 0, count);
                         splitWritten += count;
                         totalWritten += count;
@@ -1271,19 +1280,23 @@ public final class InstallerActivity extends ComponentActivity {
                     session.fsync(output);
                 }
 
+                if (splitWritten != splitSize) {
+                    throw new IOException(getString(R.string.error_split_size_mismatch));
+                }
+
                 Log.d(TAG, String.format(Locale.ROOT,
                         "Wrote split %d/%d: %s (%,d / %,d bytes)",
-                        i + 1, splitNames.length, name, splitWritten, splitSize));
+                        i + 1, apksArchive.splitCount(), name, splitWritten, splitSize));
             }
 
-            // Final progress update
             long elapsed = System.currentTimeMillis() - startTime;
+            ApksArchive.Split lastSplit = apksArchive.splitAt(apksArchive.splitCount() - 1);
             postProgress(totalWritten, totalInstallBytes,
-                    splitNames.length - 1, splitNames[splitNames.length - 1],
-                    splitSizes[splitNames.length - 1], splitSizes[splitNames.length - 1], elapsed);
+                    apksArchive.splitCount() - 1, lastSplit.displayName,
+                    lastSplit.size, lastSplit.size, elapsed);
 
             installCallbackToken = UUID.randomUUID().toString();
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            getSharedPreferences(InstallerPreferences.PREFS_NAME, MODE_PRIVATE)
                     .edit()
                     .putString(PREF_INSTALL_CALLBACK_TOKEN, installCallbackToken)
                     .apply();
@@ -1297,12 +1310,16 @@ public final class InstallerActivity extends ComponentActivity {
             IntentSender sender = PendingIntent.getActivity(this, 0, callback, flags)
                     .getIntentSender();
             session.commit(sender);
+            activeSession = null;
+            activeSessionId = -1;
             session.close();
             session = null;
             zip.close();
             zip = null;
         } catch (Exception e) {
             if (session != null) {
+                activeSession = null;
+                activeSessionId = -1;
                 session.abandon();
                 try { session.close(); } catch (Exception ignored) {}
             }
@@ -1317,20 +1334,6 @@ public final class InstallerActivity extends ComponentActivity {
         }
     }
 
-    // ── ZIP helpers ────────────────────────────────────────────
-
-    private static final class SplitInfo {
-        final String displayName;
-        final String entryName;
-        final long size;
-
-        SplitInfo(String displayName, String entryName, long size) {
-            this.displayName = displayName;
-            this.entryName = entryName;
-            this.size = size;
-        }
-    }
-
     // ── post progress ──────────────────────────────────────
 
     private void postProgress(long totalWritten, long totalSize,
@@ -1341,7 +1344,7 @@ public final class InstallerActivity extends ComponentActivity {
         int splitPct = splitSize > 0 ? (int) (splitWritten * 100 / splitSize) : 0;
 
         String splitText = getString(R.string.installing_progress_split,
-                splitName, splitIndex + 1, splitNames.length);
+                splitName, splitIndex + 1, apksArchive.splitCount());
         String pctText = getString(R.string.installing_progress_pct, overallPct);
 
         String etaText = "";
@@ -1387,7 +1390,7 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void clearInstallCallbackToken() {
         installCallbackToken = null;
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        getSharedPreferences(InstallerPreferences.PREFS_NAME, MODE_PRIVATE)
                 .edit()
                 .remove(PREF_INSTALL_CALLBACK_TOKEN)
                 .apply();
@@ -1402,7 +1405,7 @@ public final class InstallerActivity extends ComponentActivity {
         String token = intent.getStringExtra(EXTRA_INSTALL_CALLBACK_TOKEN);
         String expectedToken = installCallbackToken != null
                 ? installCallbackToken
-                : getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                : getSharedPreferences(InstallerPreferences.PREFS_NAME, MODE_PRIVATE)
                         .getString(PREF_INSTALL_CALLBACK_TOKEN, null);
         if (expectedToken == null || !expectedToken.equals(token)) {
             Log.w(TAG, "Ignoring install status intent with invalid callback token");
@@ -1421,8 +1424,11 @@ public final class InstallerActivity extends ComponentActivity {
             } else {
                 confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
             }
-            if (confirmation != null) {
+            if (confirmation != null && isSafeInstallConfirmationIntent(confirmation)) {
                 startActivity(confirmation);
+            } else {
+                lastFailureDetail = getString(R.string.error_invalid_confirmation_intent);
+                setUiState(UiState.FAILED);
             }
             return true;
         }
@@ -1435,11 +1441,22 @@ public final class InstallerActivity extends ComponentActivity {
             String msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             int legacyStatus = intent.getIntExtra(
                     "android.content.pm.extra.LEGACY_STATUS", -999);
-            lastFailureDetail = parseInstallError(status, msg, legacyStatus);
+            lastFailureDetail = InstallErrorMapper.parse(this, status, msg, legacyStatus);
             setUiState(UiState.FAILED);
         }
 
         return true;
+    }
+
+    private boolean isSafeInstallConfirmationIntent(Intent intent) {
+        int grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION;
+        if ((intent.getFlags() & grantFlags) != 0) {
+            return false;
+        }
+        return intent.resolveActivity(getPackageManager()) != null;
     }
 
     // ── error parsing ────────────────────────────────────────
@@ -1523,13 +1540,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── formatting utilities ───────────────────────────────────
 
     private String formatBytes(long bytes) {
-        if (bytes >= 1024 * 1024) {
-            return String.format(Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024.0));
-        } else if (bytes >= 1024) {
-            return String.format(Locale.ROOT, "%.0f KB", bytes / 1024.0);
-        } else {
-            return bytes + " B";
-        }
+        return FormatUtils.formatBytes(bytes);
     }
 
     private String formatETA(long remainingBytes, long bytesPerSec) {

@@ -1,57 +1,158 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="TextAppearance.Installer.Headline5" parent="android:style/TextAppearance.Material.Headline">
-        <item name="android:textColor">@color/on_surface_high</item>
-        <item name="android:textSize">24sp</item>
+    <style name="TextAppearance.Installer.Headline5" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">@color/text_primary</item>
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
-    <style name="TextAppearance.Installer.Body1" parent="android:style/TextAppearance.Material.Body1">
-        <item name="android:textColor">@color/on_surface_high</item>
-        <item name="android:textSize">16sp</item>
+    <style name="TextAppearance.Installer.SectionTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
-    <style name="TextAppearance.Installer.Body2" parent="android:style/TextAppearance.Material.Body2">
-        <item name="android:textColor">@color/on_surface_medium</item>
-        <item name="android:textSize">14sp</item>
+    <style name="TextAppearance.Installer.Body1" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
-    <style name="TextAppearance.Installer.Caption" parent="android:style/TextAppearance.Material.Caption">
-        <item name="android:textColor">@color/on_surface_medium</item>
-        <item name="android:textSize">12sp</item>
+    <style name="TextAppearance.Installer.Body2" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/text_secondary</item>
     </style>
 
-    <style name="Widget.Installer.Button.Contained" parent="android:style/Widget.Material.Button">
-        <item name="android:background">@drawable/btn_contained</item>
-        <item name="android:elevation">2dp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
+    <style name="TextAppearance.Installer.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.Installer.Supporting" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.Installer.ListItemTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.Installer.ListItemSubtitle" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="Widget.Installer.Toolbar" parent="Widget.MaterialComponents.Toolbar.Primary">
+        <item name="android:background">?attr/colorPrimary</item>
+        <item name="titleTextColor">?attr/colorOnPrimary</item>
+        <item name="subtitleTextColor">?attr/colorOnPrimary</item>
+        <item name="navigationIconTint">?attr/colorOnPrimary</item>
+        <item name="itemIconTint">?attr/colorOnPrimary</item>
+        <item name="elevation">4dp</item>
+    </style>
+
+    <style name="Widget.Installer.BottomNavigation" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="backgroundTint">?attr/colorSurface</item>
+        <item name="itemIconTint">@color/nav_item_tint</item>
+        <item name="itemTextColor">@color/nav_item_tint</item>
+        <item name="itemRippleColor">@color/control_ripple</item>
+        <item name="labelVisibilityMode">labeled</item>
+        <item name="elevation">8dp</item>
+    </style>
+
+    <style name="Widget.Installer.NavigationView" parent="Widget.MaterialComponents.NavigationView">
+        <item name="android:background">?attr/colorSurface</item>
+        <item name="itemIconTint">@color/nav_item_tint</item>
+        <item name="itemTextColor">@color/nav_item_tint</item>
+        <item name="itemBackground">@drawable/nav_item_background</item>
+        <item name="elevation">16dp</item>
+    </style>
+
+    <style name="Widget.Installer.Card" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/surface_elevation_2</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="cardCornerRadius">4dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="cardUseCompatPadding">true</item>
+    </style>
+
+    <style name="Widget.Installer.OutlinedPanel" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="strokeColor">@color/card_outline</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="cardCornerRadius">4dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardUseCompatPadding">false</item>
+    </style>
+
+    <style name="Widget.Installer.SecondaryPanel">
+        <item name="android:background">@drawable/detail_surface</item>
+        <item name="android:padding">@dimen/space_16</item>
+    </style>
+
+    <style name="Widget.Installer.SettingRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">@dimen/space_16</item>
+        <item name="android:paddingTop">@dimen/space_10</item>
+        <item name="android:paddingEnd">@dimen/space_16</item>
+        <item name="android:paddingBottom">@dimen/space_10</item>
+    </style>
+
+    <style name="OpenJbdOutlinedCard" parent="Widget.Installer.OutlinedPanel" />
+
+    <style name="OpenJbdSectionTitle" parent="TextAppearance.Installer.SectionTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">@dimen/space_24</item>
+        <item name="android:paddingBottom">@dimen/space_8</item>
+    </style>
+
+    <style name="TextAppearance.OpenJbd.Supporting" parent="TextAppearance.Installer.Supporting" />
+    <style name="TextAppearance.OpenJbd.ListItemTitle" parent="TextAppearance.Installer.ListItemTitle" />
+    <style name="TextAppearance.OpenJbd.ListItemSubtitle" parent="TextAppearance.Installer.ListItemSubtitle" />
+
+    <style name="Widget.Installer.Button.Contained" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="cornerRadius">4dp</item>
+        <item name="elevation">2dp</item>
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:paddingStart">@dimen/space_16</item>
+        <item name="android:paddingEnd">@dimen/space_16</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:textColor">@color/btn_text_contained</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="rippleColor">@color/control_ripple</item>
     </style>
 
-    <style name="Widget.Installer.Button.Outlined" parent="android:style/Widget.Material.Button.Borderless">
-        <item name="android:background">@drawable/btn_outlined</item>
-        <item name="android:elevation">0dp</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:paddingStart">16dp</item>
-        <item name="android:paddingEnd">16dp</item>
+    <style name="Widget.Installer.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="cornerRadius">4dp</item>
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:paddingStart">@dimen/space_16</item>
+        <item name="android:paddingEnd">@dimen/space_16</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:textColor">@color/btn_text_outlined</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="strokeColor">?attr/colorPrimary</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="rippleColor">@color/primary_control_ripple</item>
     </style>
 
-    <style name="Widget.Installer.Button.Text" parent="android:style/Widget.Material.Button.Borderless">
-        <item name="android:background">?android:attr/selectableItemBackground</item>
-        <item name="android:minHeight">48dp</item>
-        <item name="android:minWidth">48dp</item>
+    <style name="Widget.Installer.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="backgroundTint">@android:color/transparent</item>
+        <item name="android:minHeight">@dimen/touch_target_min</item>
+        <item name="android:minWidth">@dimen/touch_target_min</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:textColor">@color/btn_text_outlined</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="rippleColor">@color/primary_control_ripple</item>
     </style>
+
+    <style name="Widget" />
+
+    <style name="Widget.Installer" />
+
+    <style name="Widget.OpenJbd" />
+
+    <style name="Widget.OpenJbd.SecondaryPanel" parent="Widget.Installer.SecondaryPanel" />
 </resources>

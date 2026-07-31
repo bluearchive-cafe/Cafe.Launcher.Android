@@ -29,9 +29,18 @@
     <string name="installing_progress_split">%1$s (%2$d / %3$d)</string>
     <string name="installing_progress_pct">%1$d%% complete</string>
     <string name="installing_confirm_system">Confirm installation in the system prompt.</string>
+    <string name="notification_permission_denied_detail">Installation will continue, but background progress notifications are disabled.</string>
     <string name="eta_less_than_minute">Less than 1 minute</string>
     <string name="eta_minutes_seconds">About %1$d min %2$d sec</string>
     <string name="eta_seconds">About %1$d sec</string>
+    <plurals name="eta_seconds_quantity">
+        <item quantity="one">About %d second</item>
+        <item quantity="other">About %d seconds</item>
+    </plurals>
+    <plurals name="eta_minutes_quantity">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
     <string name="permission_title">Install permission required</string>
     <string name="permission_message">Allow this app to install unknown apps, then return to continue.</string>
     <string name="permission_grant">Open settings</string>
@@ -88,6 +97,14 @@
     <string name="error_no_matching_abis">The app architecture is not compatible with your device CPU.</string>
     <string name="error_bad_signature">The install package signature is invalid.</string>
     <string name="error_generic">Installation failed (error code: %1$d)</string>
+    <string name="error_no_network">No network connection is available.</string>
+    <string name="error_no_install_files">No installable files are available.</string>
+    <string name="error_manifest_too_large">Release manifest is too large.</string>
+    <string name="error_manifest_size_mismatch">Downloaded size does not match the signed manifest.</string>
+    <string name="error_manifest_hash_mismatch">Downloaded SHA-256 does not match the signed manifest.</string>
+    <string name="error_operation_cancelled">Operation canceled.</string>
+    <string name="error_split_size_mismatch">APK split size did not match the archive metadata.</string>
+    <string name="error_invalid_confirmation_intent">The system install confirmation could not be verified.</string>
     <string name="nav_install">Install</string>
     <string name="nav_help">Help</string>
     <string name="nav_settings">Settings</string>
@@ -95,7 +112,10 @@
     <string name="help_body">1. The installer checks storage and target game status first.\n2. After download completes, confirm installation or update.\n3. Android 8 and above require permission to install unknown apps.\n4. When the system install confirmation appears, follow the prompt to continue.</string>
     <string name="help_note">If installation fails, check network connection, storage, device architecture, and installed-version signature. The failure page’s “Show details” button shows the specific reason returned by the system.</string>
     <string name="settings_title">Settings and about</string>
-    <string name="settings_theme_label">Dark theme</string>
+    <string name="settings_group_interface">Interface</string>
+    <string name="settings_group_install_target">Install target</string>
+    <string name="settings_group_about">About</string>
+    <string name="settings_theme_label">Theme</string>
     <string name="settings_language_label">Language</string>
     <string name="settings_target_package_label">Target game package</string>
     <string name="settings_download_url_label">Download endpoint</string>

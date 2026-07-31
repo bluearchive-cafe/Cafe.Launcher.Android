@@ -1,8 +1,83 @@
 import org.gradle.api.tasks.compile.JavaCompile
+import java.net.URI
 
 plugins {
     id("com.android.application")
 }
+
+fun Project.stringProperty(name: String, defaultValue: String): String =
+    (findProperty(name) as String?)?.ifBlank { defaultValue } ?: defaultValue
+
+fun javaStringLiteral(value: String): String {
+    val escaped = buildString {
+        append('"')
+        value.forEach { ch ->
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> {
+                    if (ch.code < 0x20) {
+                        append("\\u%04x".format(ch.code))
+                    } else {
+                        append(ch)
+                    }
+                }
+            }
+        }
+        append('"')
+    }
+    return escaped
+}
+
+fun validatePackageName(value: String, propertyName: String): String {
+    require(value.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+"))) {
+        "$propertyName must be a valid Java/Android package name"
+    }
+    return value
+}
+
+fun validateComponentName(value: String, propertyName: String): String {
+    require(value.matches(Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+"))) {
+        "$propertyName must be a valid fully-qualified component name"
+    }
+    return value
+}
+
+fun validateHttpsUrl(value: String, propertyName: String): String {
+    val uri = URI(value)
+    require(uri.scheme == "https") { "$propertyName must use HTTPS" }
+    require(!uri.host.isNullOrBlank()) { "$propertyName must include a host" }
+    require(uri.userInfo == null) { "$propertyName must not include credentials" }
+    require(uri.fragment == null) { "$propertyName must not include a fragment" }
+    return value
+}
+
+fun validateBase64OrEmpty(value: String, propertyName: String): String {
+    if (value.isBlank()) return value
+    require(value.matches(Regex("[A-Za-z0-9+/=\\r\\n]+"))) {
+        "$propertyName must be Base64-encoded"
+    }
+    return value
+}
+
+val gamePackageName = validatePackageName(
+    stringProperty("GAME_PACKAGE_NAME", "com.YostarJP.BlueArchive"),
+    "GAME_PACKAGE_NAME")
+val gameActivityName = validateComponentName(
+    stringProperty("GAME_ACTIVITY_NAME", "com.yostarjp.bluearchive.MxUnityPlayerActivity"),
+    "GAME_ACTIVITY_NAME")
+val apksDownloadUrl = validateHttpsUrl(
+    stringProperty("APKS_DOWNLOAD_URL", "https://download.bluearchive.cafe/android/latest"),
+    "APKS_DOWNLOAD_URL")
+val apksManifestUrl = validateHttpsUrl(
+    stringProperty("APKS_MANIFEST_URL", "https://download.bluearchive.cafe/android/latest.manifest.json"),
+    "APKS_MANIFEST_URL")
+val releaseManifestPublicKey = validateBase64OrEmpty(
+    stringProperty("RELEASE_MANIFEST_PUBLIC_KEY", ""),
+    "RELEASE_MANIFEST_PUBLIC_KEY")
 
 android {
     namespace = "cafe.bluearchive.installer"
@@ -15,11 +90,21 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // The target game package name — override via gradle.properties or CLI:
+        // Target game and release metadata. Override via gradle.properties or CLI:
         //   ./gradlew assembleRelease -PGAME_PACKAGE_NAME=com.example.game
-        buildConfigField("String", "GAME_PACKAGE_NAME", "\"${findProperty("GAME_PACKAGE_NAME") ?: "com.YostarJP.BlueArchive"}\"")
-        buildConfigField("String", "GAME_ACTIVITY_NAME", "\"${findProperty("GAME_ACTIVITY_NAME") ?: "com.yostarjp.bluearchive.MxUnityPlayerActivity"}\"")
-        buildConfigField("String", "APKS_DOWNLOAD_URL", "\"${findProperty("APKS_DOWNLOAD_URL") ?: "https://download.bluearchive.cafe/android/latest"}\"")
+        buildConfigField("String", "GAME_PACKAGE_NAME", javaStringLiteral(gamePackageName))
+        buildConfigField("String", "GAME_ACTIVITY_NAME", javaStringLiteral(gameActivityName))
+        buildConfigField("String", "APKS_DOWNLOAD_URL", javaStringLiteral(apksDownloadUrl))
+        buildConfigField("String", "APKS_MANIFEST_URL", javaStringLiteral(apksManifestUrl))
+        buildConfigField("String", "RELEASE_MANIFEST_PUBLIC_KEY", javaStringLiteral(releaseManifestPublicKey))
+
+        manifestPlaceholders["gamePackageName"] = gamePackageName
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     buildTypes {
@@ -54,6 +139,9 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.material:material:1.12.0")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20250517")
 }
 
 tasks.withType<JavaCompile>().configureEach {

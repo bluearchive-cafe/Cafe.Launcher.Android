@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="@color/on_surface_medium"
-        android:pathData="M5,20h14v-2H5v2zM19,9h-4V3H9v6H5l7,7 7,-7z" />
-</vector>
+<animated-selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_install_filled"
+        android:state_checked="true"
+        android:drawable="@drawable/ic_nav_install_filled" />
+    <item
+        android:id="@+id/nav_install_outline"
+        android:drawable="@drawable/ic_nav_install_outline" />
+    <transition
+        android:fromId="@id/nav_install_outline"
+        android:toId="@id/nav_install_filled"
+        android:drawable="@drawable/avd_nav_install_outline_to_filled" />
+    <transition
+        android:fromId="@id/nav_install_filled"
+        android:toId="@id/nav_install_outline"
+        android:drawable="@drawable/avd_nav_install_filled_to_outline" />
+</animated-selector>
