@@ -16,14 +16,15 @@
     <string name="network_error_title">Network error</string>
     <string name="network_error_message">Download failed. Check your connection and try again.</string>
     <string name="confirm_install_title">Ready to install</string>
-    <string name="confirm_install_message">About to install %1$s\nSize: %2$s\nFiles: %3$d</string>
+    <string name="confirm_install_message">About to install %1$s\nSize: %2$s · %3$d split(s)</string>
     <string name="confirm_install_button">Install</string>
     <string name="confirm_cancel">Cancel</string>
     <string name="confirm_update_title">New version found</string>
     <string name="latest_version">Latest</string>
-    <string name="confirm_update_message">%1$s\nCurrent version: %2$s\nNew version: %3$s\nSize: %4$s\nFiles: %5$d</string>
+    <string name="confirm_update_message">%1$s\nInstalled: %2$s (v%3$s)\nNew: v%4$s\nDownload size: %5$s · %6$d split(s)</string>
     <string name="confirm_update_button">Update</string>
     <string name="confirm_update_warning">Updating may keep or clear app data. Back up important data first.</string>
+    <string name="confirm_split_list_title">APK splits</string>
     <string name="installing_title">Installing</string>
     <string name="installing_preparing">Preparing installation…</string>
     <string name="installing_progress_split">%1$s (%2$d / %3$d)</string>
@@ -98,6 +99,9 @@
     <string name="error_bad_signature">The install package signature is invalid.</string>
     <string name="error_generic">Installation failed (error code: %1$d)</string>
     <string name="error_no_network">No network connection is available.</string>
+    <string name="error_connection_timeout">Connection timed out. Check your network and try again.</string>
+    <string name="error_dns_failure">Could not resolve server address (%1$s). Check your DNS or network settings.</string>
+    <string name="error_tls_failure">Secure connection failed (%1$s). The server certificate may be invalid.</string>
     <string name="error_no_install_files">No installable files are available.</string>
     <string name="error_manifest_too_large">Release manifest is too large.</string>
     <string name="error_manifest_size_mismatch">Downloaded size does not match the signed manifest.</string>
@@ -132,4 +136,20 @@
         <item>Traditional Chinese</item>
         <item>English</item>
     </string-array>
+
+    <!-- Install mode settings -->
+    <string name="settings_group_install_method">Install method</string>
+    <string name="settings_install_mode_label">Install mode</string>
+    <string name="settings_install_mode_desc_system">Use the standard Android package installer. Works on all devices but may require granting "Install unknown apps" permission.</string>
+    <string name="settings_install_mode_desc_shizuku">Use Shizuku to install with ADB/root identity. Bypasses system permission dialogs.\n\nRequires Shizuku to be installed and running.</string>
+    <string name="settings_install_mode_desc_root">Use root (su) to install directly. Bypasses all permission dialogs.\n\nRequires a rooted device with a superuser app.</string>
+    <string-array name="install_mode_options">
+        <item>System</item>
+        <item>Shizuku</item>
+        <item>Root</item>
+    </string-array>
+    <string name="settings_install_mode_unavailable_title">Install mode unavailable</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku is not running or permission has not been granted. Please start Shizuku and grant permission to this app.</string>
+    <string name="settings_install_mode_unavailable_root">Root access is not available. Make sure your device is rooted and the superuser app has granted permission.</string>
+    <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku permission</string>
 </resources>

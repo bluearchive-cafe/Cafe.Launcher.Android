@@ -1,5 +1,9 @@
 package cafe.bluearchive.installer;
 
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,10 +25,22 @@ final class ApksArchiveParser {
     }
 
     ApksArchive parse(File apksFile) throws IOException {
+        return parse(apksFile, null);
+    }
+
+    /**
+     * Parses the APKS container, optionally extracting version info from
+     * {@code base.apk} by calling
+     * {@link PackageManager#getPackageArchiveInfo(String, int)}.
+     */
+    ApksArchive parse(File apksFile,
+                      PackageManager pm) throws IOException {
         List<ApksArchive.Split> splits = new ArrayList<>();
         Set<String> displayNames = new HashSet<>();
         long totalBytes = 0;
         boolean hasBaseApk = false;
+        String apkVersionName = null;
+        long apkVersionCode = -1;
 
         try (ZipFile zip = new ZipFile(apksFile)) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -53,6 +69,21 @@ final class ApksArchiveParser {
                 }
                 if ("base.apk".equals(displayName)) {
                     hasBaseApk = true;
+                    // Extract version info from base.apk via PackageManager
+                    // (uses the ZIP entry path as the archive path).
+                    if (pm != null) {
+                        String archivePath = apksFile.getAbsolutePath() + "!/" + entryName;
+                        try {
+                            PackageInfo pi = pm.getPackageArchiveInfo(
+                                    archivePath, 0);
+                            if (pi != null) {
+                                apkVersionName = pi.versionName;
+                                apkVersionCode = pi.versionCode;
+                            }
+                        } catch (Exception ignored) {
+                            // Version info is best-effort; ignore failures.
+                        }
+                    }
                 }
 
                 try {
@@ -76,6 +107,6 @@ final class ApksArchiveParser {
         }
 
         Collections.sort(splits, (left, right) -> left.displayName.compareTo(right.displayName));
-        return new ApksArchive(splits, totalBytes);
+        return new ApksArchive(splits, totalBytes, apkVersionName, apkVersionCode);
     }
 }

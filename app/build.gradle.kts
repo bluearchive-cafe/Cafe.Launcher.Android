@@ -85,7 +85,7 @@ android {
 
     defaultConfig {
         applicationId = "cafe.bluearchive.installer"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
@@ -125,6 +125,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        aidl = true
     }
 }
 
@@ -139,6 +140,14 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.material:material:1.12.0")
+
+    // Shizuku — privileged install via ADB/root
+    val shizukuVersion = "12.2.0"
+    implementation("dev.rikka.shizuku:api:$shizukuVersion")
+    implementation("dev.rikka.shizuku:provider:$shizukuVersion")
+
+    // libsu — root shell access
+    implementation("com.github.topjohnwu.libsu:core:5.2.2")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20250517")

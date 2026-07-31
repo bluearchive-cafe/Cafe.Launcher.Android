@@ -16,14 +16,15 @@
     <string name="network_error_title">網路錯誤</string>
     <string name="network_error_message">下載失敗，請檢查網路連線後重試。</string>
     <string name="confirm_install_title">準備安裝</string>
-    <string name="confirm_install_message">即將安裝 %1$s\n大小：%2$s\n檔案：%3$d 個</string>
+    <string name="confirm_install_message">即將安裝 %1$s\n大小：%2$s · %3$d 個分片</string>
     <string name="confirm_install_button">安裝</string>
     <string name="confirm_cancel">取消</string>
     <string name="confirm_update_title">發現新版本</string>
     <string name="latest_version">最新版</string>
-    <string name="confirm_update_message">%1$s\n目前版本：%2$s\n新版本：%3$s\n大小：%4$s\n檔案：%5$d 個</string>
+    <string name="confirm_update_message">%1$s\n已安裝：%2$s (v%3$s)\n新版本：v%4$s\n下載大小：%5$s · %6$d 個分片</string>
     <string name="confirm_update_button">更新</string>
     <string name="confirm_update_warning">更新可能會保留或清除應用程式資料，請先備份重要資料。</string>
+    <string name="confirm_split_list_title">APK 分片列表</string>
     <string name="installing_title">正在安裝</string>
     <string name="installing_preparing">正在準備安裝…</string>
     <string name="installing_progress_split">%1$s（%2$d / %3$d）</string>
@@ -95,6 +96,9 @@
     <string name="error_bad_signature">安裝套件簽章無效。</string>
     <string name="error_generic">安裝失敗（錯誤碼：%1$d）</string>
     <string name="error_no_network">沒有可用的網路連線。</string>
+    <string name="error_connection_timeout">連線逾時，請檢查網路後重試。</string>
+    <string name="error_dns_failure">無法解析伺服器位址（%1$s），請檢查 DNS 或網路設定。</string>
+    <string name="error_tls_failure">安全連線失敗（%1$s），伺服器憑證可能無效。</string>
     <string name="error_no_install_files">沒有可安裝的檔案。</string>
     <string name="error_manifest_too_large">發布清單過大。</string>
     <string name="error_manifest_size_mismatch">下載大小與已簽名發布清單不一致。</string>
@@ -130,4 +134,20 @@
         <item>繁體中文</item>
         <item>English</item>
     </string-array>
+
+    <!-- Install mode settings -->
+    <string name="settings_group_install_method">安裝方式</string>
+    <string name="settings_install_mode_label">安裝模式</string>
+    <string name="settings_install_mode_desc_system">使用標準 Android 套件管理器安裝。適用於所有裝置，但可能需要授予「安裝未知來源應用程式」權限。</string>
+    <string name="settings_install_mode_desc_shizuku">使用 Shizuku 以 ADB/Root 身分安裝。繞過系統權限彈窗。\n\n需要已安裝並執行 Shizuku。</string>
+    <string name="settings_install_mode_desc_root">使用 Root (su) 直接安裝。繞過所有權限彈窗。\n\n需要裝置已 Root 並安裝超級使用者管理應用程式。</string>
+    <string-array name="install_mode_options">
+        <item>系統</item>
+        <item>Shizuku</item>
+        <item>Root</item>
+    </string-array>
+    <string name="settings_install_mode_unavailable_title">安裝模式不可用</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku 未執行或未授權。請啟動 Shizuku 並授權此應用程式。</string>
+    <string name="settings_install_mode_unavailable_root">Root 權限不可用。請確保裝置已 Root 且超級使用者應用程式已授權。</string>
+    <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 權限</string>
 </resources>

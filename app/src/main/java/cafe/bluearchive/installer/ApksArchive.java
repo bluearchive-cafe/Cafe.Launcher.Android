@@ -7,10 +7,19 @@ import java.util.List;
 final class ApksArchive {
     private final List<Split> splits;
     private final long totalBytes;
+    private final String versionName;
+    private final long versionCode;
 
     ApksArchive(List<Split> splits, long totalBytes) {
+        this(splits, totalBytes, null, -1);
+    }
+
+    ApksArchive(List<Split> splits, long totalBytes,
+                String versionName, long versionCode) {
         this.splits = Collections.unmodifiableList(new ArrayList<>(splits));
         this.totalBytes = totalBytes;
+        this.versionName = versionName;
+        this.versionCode = versionCode;
     }
 
     List<Split> splits() {
@@ -28,6 +37,12 @@ final class ApksArchive {
     Split splitAt(int index) {
         return splits.get(index);
     }
+
+    /** Version name from the embedded base.apk, or null when unavailable. */
+    String versionName() { return versionName; }
+
+    /** Version code from the embedded base.apk, or -1 when unavailable. */
+    long versionCode() { return versionCode; }
 
     static final class Split {
         final String displayName;

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network security configuration.
+    Since targetSdk >= 28, Android blocks all cleartext (HTTP) traffic by default.
+    This config allows cleartext only while following HTTPS → HTTP redirects from
+    CDNs, and during development. The production CDN should always use HTTPS.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Allow cleartext on localhost for development and emulator testing -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+
+    <!-- Allow cleartext on CDN domains that may redirect HTTPS → HTTP -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">bluearchive.cafe</domain>
+    </domain-config>
+</network-security-config>
