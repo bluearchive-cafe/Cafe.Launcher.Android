@@ -146,6 +146,7 @@ public final class InstallerActivity extends ComponentActivity {
 
     private UiState currentState = UiState.CHECKING;
     private boolean installing;
+    private InstallMode activeInstallMode;
     private PackageInfo existingPackage;
     private ApksArchive apksArchive;
     private ReleaseManifest releaseManifest;
@@ -206,6 +207,7 @@ public final class InstallerActivity extends ComponentActivity {
             installModeFallbackDetail = savedInstanceState.getString("installModeFallbackDetail");
             selectedNavItemId = savedInstanceState.getInt("selectedNavItemId", R.id.nav_install);
             currentState = uiStateFromName(savedInstanceState.getString("currentState"));
+            activeInstallMode = installModeFromName(savedInstanceState.getString("activeInstallMode"));
         }
 
         // Install backend — used by handleInstallStatus for system mode callbacks.
@@ -257,6 +259,7 @@ public final class InstallerActivity extends ComponentActivity {
         outState.putString("installModeFallbackDetail", installModeFallbackDetail);
         outState.putInt("selectedNavItemId", selectedNavItemId);
         outState.putString("currentState", currentState.name());
+        outState.putString("activeInstallMode", activeInstallMode != null ? activeInstallMode.name() : null);
     }
 
     private UiState uiStateFromName(String name) {
@@ -265,6 +268,15 @@ public final class InstallerActivity extends ComponentActivity {
             return UiState.valueOf(name);
         } catch (IllegalArgumentException ignored) {
             return UiState.CHECKING;
+        }
+    }
+
+    private InstallMode installModeFromName(String name) {
+        if (name == null) return null;
+        try {
+            return InstallMode.valueOf(name);
+        } catch (IllegalArgumentException ignored) {
+            return null;
         }
     }
 
@@ -373,8 +385,10 @@ public final class InstallerActivity extends ComponentActivity {
                     cancelActiveInstall();
                     abandonActiveSession();
                     installing = false;
+                    activeInstallMode = null;
+                    cancelInstallNotification();
                     cleanupTempFiles();
-                    finishAndRemoveTask();
+                    runPreflightChecks();
                 })
                 .setNegativeButton(R.string.cancel_confirm_no, null)
                 .show();
@@ -701,6 +715,9 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void showAlreadyInstalled() {
         statusIcon.setImageResource(R.drawable.ic_install_mobile_24);
+        if (existingPackage == null) {
+            existingPackage = findExistingPackage();
+        }
         String label = getAppLabel();
         String ver = existingPackage != null ? existingPackage.versionName : "?";
         titleText.setText(R.string.already_installed_title);
@@ -805,6 +822,9 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void showConfirmUpdate() {
         statusIcon.setImageResource(R.drawable.ic_system_update_24);
+        if (existingPackage == null) {
+            existingPackage = findExistingPackage();
+        }
         String oldVer = existingPackage != null ? existingPackage.versionName : "?";
         String newVer = downloadedVersionLabel();
         messageText.setGravity(Gravity.START);
@@ -878,11 +898,17 @@ public final class InstallerActivity extends ComponentActivity {
     private void showInstalling() {
         statusIcon.setImageResource(R.drawable.ic_install_mobile_24);
         titleText.setText(R.string.installing_title);
-        messageText.setText(lastFailureDetail != null
-                ? lastFailureDetail : getString(R.string.installing_preparing));
-        indeterminateBar.setVisibility(View.VISIBLE);
-        indeterminateBar.setAlpha(1f);
-        indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+        if (activeInstallMode != null) {
+            messageText.setText(installPreparingMessage(activeInstallMode));
+        } else if (lastFailureDetail != null) {
+            messageText.setText(lastFailureDetail);
+        } else {
+            messageText.setText(R.string.installing_preparing);
+        }
+        progressBar.setVisibility(View.VISIBLE);
+        progressBar.setIndeterminate(true);
+        progressBar.setProgress(0);
+        progressBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
         if (installModeFallbackDetail != null && !installModeFallbackDetail.isEmpty()) {
             supportingText.setText(installModeFallbackDetail);
             supportingText.setVisibility(View.VISIBLE);
@@ -901,15 +927,33 @@ public final class InstallerActivity extends ComponentActivity {
         statusIcon.setImageResource(R.drawable.ic_admin_panel_settings_24);
         titleText.setText(R.string.installing_title);
         messageText.setText(R.string.installing_confirm_system);
-        indeterminateBar.setVisibility(View.VISIBLE);
-        indeterminateBar.setAlpha(1f);
-        indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+        progressBar.setVisibility(View.VISIBLE);
+        progressBar.setIndeterminate(true);
+        progressBar.setProgress(0);
+        progressBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+    }
+
+    private String installPreparingMessage(InstallMode mode) {
+        if (mode == InstallMode.SHIZUKU || mode == InstallMode.ROOT) {
+            return getString(R.string.installing_preparing_privileged, installModeLabel(mode));
+        }
+        return getString(R.string.installing_preparing_system);
+    }
+
+    private String installModeLabel(InstallMode mode) {
+        if (mode == InstallMode.SHIZUKU) {
+            return getString(R.string.settings_install_mode_shizuku);
+        } else if (mode == InstallMode.ROOT) {
+            return getString(R.string.settings_install_mode_root);
+        }
+        return getString(R.string.settings_install_mode_system);
     }
 
     // ── state: SUCCESS ─────────────────────────────────────────
 
     private void showSuccess() {
         installing = false;
+        activeInstallMode = null;
         cancelInstallNotification();
         cleanupTempFiles();
         statusIcon.setImageResource(R.drawable.ic_status_success);
@@ -919,16 +963,13 @@ public final class InstallerActivity extends ComponentActivity {
         primaryButton.setText(R.string.success_launch);
         primaryButton.setOnClickListener(v -> launchGame());
         primaryButton.setVisibility(View.VISIBLE);
-
-        secondaryButton.setText(R.string.success_cleanup);
-        secondaryButton.setOnClickListener(v -> requestSelfUninstall());
-        secondaryButton.setVisibility(View.VISIBLE);
     }
 
     // ── state: FAILED ──────────────────────────────────────────
 
     private void showFailed() {
         installing = false;
+        activeInstallMode = null;
         cancelInstallNotification();
         statusIcon.setImageResource(R.drawable.ic_status_error);
         titleText.setText(R.string.failed_title);
@@ -1314,6 +1355,7 @@ public final class InstallerActivity extends ComponentActivity {
             installModeFallbackDetail = null;
         }
 
+        activeInstallMode = backend.mode();
         installing = true;
         setUiState(UiState.INSTALLING);
 
@@ -1399,17 +1441,21 @@ public final class InstallerActivity extends ComponentActivity {
         String finalEtaText = etaText;
         postToUi(() -> {
             if (currentState != UiState.INSTALLING) return;
+            boolean hasDeterminateProgress = totalSize > 0;
             titleText.setText(R.string.installing_title);
-            messageText.setText(pctText);
+            messageText.setText(activeInstallMode != null
+                    ? installPreparingMessage(activeInstallMode)
+                    : pctText);
 
-            // Crossfade from indeterminate to determinate on first progress
-            if (indeterminateBar.getVisibility() == View.VISIBLE) {
-                crossfadeProgress(indeterminateBar, progressBar);
+            progressBar.setVisibility(View.VISIBLE);
+            progressBar.setIndeterminate(!hasDeterminateProgress);
+            if (hasDeterminateProgress) {
+                progressBar.setProgress(overallPct);
+                progressBar.setContentDescription(
+                        getString(R.string.cd_progress_install, overallPct));
+            } else {
+                progressBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
             }
-
-            progressBar.setProgress(overallPct);
-            progressBar.setContentDescription(
-                    getString(R.string.cd_progress_install, overallPct));
 
             splitLabel.setText(splitText);
             splitLabel.setVisibility(View.VISIBLE);
@@ -1425,8 +1471,8 @@ public final class InstallerActivity extends ComponentActivity {
             showOperationNotification(
                     getString(R.string.notif_title),
                     getString(R.string.notif_install_message),
-                    overallPct,
-                    false);
+                    hasDeterminateProgress ? overallPct : 0,
+                    !hasDeterminateProgress);
         });
     }
 

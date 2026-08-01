@@ -31,6 +31,8 @@
     <string name="confirm_update_warning">Updating may keep or clear app data. Back up important data first.</string>
     <string name="installing_title">Installing game</string>
     <string name="installing_preparing">Preparing installation…</string>
+    <string name="installing_preparing_system">Installing with the system installer. Confirm any system prompts to continue…</string>
+    <string name="installing_preparing_privileged">Installing with %1$s. Please keep the app open until installation completes…</string>
     <string name="installing_progress_split">%1$s (%2$d / %3$d)</string>
     <string name="installing_progress_pct">%1$d%% complete</string>
     <string name="installing_confirm_system">Confirm installation in the system prompt.</string>

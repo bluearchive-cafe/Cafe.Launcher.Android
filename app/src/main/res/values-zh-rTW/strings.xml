@@ -32,6 +32,8 @@
     <string name="confirm_split_list_title">APK 分片列表</string>
     <string name="installing_title">正在安裝遊戲</string>
     <string name="installing_preparing">正在準備安裝…</string>
+    <string name="installing_preparing_system">正在透過系統安裝器安裝。請依系統提示繼續…</string>
+    <string name="installing_preparing_privileged">正在透過 %1$s 安裝。請保持應用程式開啟直到安裝完成…</string>
     <string name="installing_progress_split">%1$s（%2$d / %3$d）</string>
     <string name="installing_progress_pct">已完成 %1$d%%</string>
     <string name="installing_confirm_system">請在系統彈出視窗中確認安裝。</string>
@@ -224,7 +226,7 @@
     <string name="resource_panel_status_waiting">等待</string>
     <string name="resource_panel_status_failed">失敗</string>
     <string name="resource_panel_version_official">官方版本：%1$s</string>
-    <string name="resource_panel_version_localized">在地化版本：%1$s</string>
+    <string name="resource_panel_version_localized">漢化版本：%1$s</string>
     <string name="resource_panel_refresh">重新整理</string>
     <string name="resource_panel_save">儲存設定</string>
     <string name="resource_panel_saved">設定已儲存，重新啟動遊戲後生效。</string>
