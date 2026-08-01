@@ -88,7 +88,7 @@ android {
         minSdk = 23
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0.0-beta.1"
 
         // Target game and release metadata. Override via gradle.properties or CLI:
         //   ./gradlew assembleRelease -PGAME_PACKAGE_NAME=com.example.game
