@@ -3,6 +3,8 @@ package cafe.bluearchive.installer;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
+import androidx.core.content.pm.PackageInfoCompat;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -77,8 +79,7 @@ final class ApksArchiveParser {
                         if (pi != null) {
                             apkPackageName = pi.packageName;
                             apkVersionName = pi.versionName;
-                            apkVersionCode = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
-                                    ? pi.getLongVersionCode() : pi.versionCode;
+                            apkVersionCode = PackageInfoCompat.getLongVersionCode(pi);
                         }
                     }
                 }

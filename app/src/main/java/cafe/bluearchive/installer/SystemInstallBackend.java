@@ -254,13 +254,7 @@ final class SystemInstallBackend implements InstallBackend {
                 PackageInstaller.STATUS_FAILURE);
 
         if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
-            @SuppressWarnings("deprecation")
-            Intent confirmation;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class);
-            } else {
-                confirmation = intent.getParcelableExtra(Intent.EXTRA_INTENT);
-            }
+            Intent confirmation = getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent.class);
             StatusResult result = new StatusResult();
             result.pendingUserAction = true;
             result.confirmationIntent = confirmation;
@@ -282,6 +276,15 @@ final class SystemInstallBackend implements InstallBackend {
             result.errorDetail = InstallErrorMapper.parse(context, status, msg, legacyStatus);
             return result;
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static <T extends android.os.Parcelable> T getParcelableExtra(
+            Intent intent, String name, Class<T> type) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return intent.getParcelableExtra(name, type);
+        }
+        return intent.getParcelableExtra(name);
     }
 
     private void clearCallbackToken(Context context) {
