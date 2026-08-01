@@ -137,6 +137,8 @@ public final class InstallerActivity extends ComponentActivity {
     private View settingsThemeRow;
     private View settingsLanguageRow;
     private View settingsInstallModeRow;
+    private View settingsShizukuStatusRow;
+    private View settingsRootStatusRow;
     private View settingsAboutRow;
 
     // ── State ──────────────────────────────────────────────────
@@ -449,6 +451,8 @@ public final class InstallerActivity extends ComponentActivity {
         settingsThemeRow = findViewById(R.id.settingsThemeRow);
         settingsLanguageRow = findViewById(R.id.settingsLanguageRow);
         settingsInstallModeRow = findViewById(R.id.settingsInstallModeRow);
+        settingsShizukuStatusRow = findViewById(R.id.settingsShizukuStatusRow);
+        settingsRootStatusRow = findViewById(R.id.settingsRootStatusRow);
         settingsAboutRow = findViewById(R.id.settingsAboutRow);
         bindSettingsContent();
         ViewCompat.setAccessibilityHeading(titleText, true);
@@ -520,6 +524,8 @@ public final class InstallerActivity extends ComponentActivity {
                 settingsThemeRow,
                 settingsLanguageRow,
                 settingsInstallModeRow,
+                settingsShizukuStatusRow,
+                settingsRootStatusRow,
                 settingsAboutRow);
         settingsController.bind();
     }

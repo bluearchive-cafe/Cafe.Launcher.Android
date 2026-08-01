@@ -158,9 +158,21 @@
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">Install mode unavailable</string>
     <string name="install_mode_fallback_message">%1$s Falling back to system installer.</string>
-    <string name="settings_install_mode_unavailable_shizuku">Shizuku is not running or permission has not been granted. Please start Shizuku and grant permission to this app.</string>
-    <string name="settings_install_mode_unavailable_root">Root access is not available. Make sure your device is rooted and the superuser app has granted permission.</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku is not available. Please start Shizuku and grant permission to this app.</string>
+    <string name="settings_install_mode_shizuku_not_running">Shizuku is not running. Start Shizuku, then try again.</string>
+    <string name="settings_install_mode_shizuku_outdated">This Shizuku version is too old. Update Shizuku, then try again.</string>
+    <string name="settings_install_mode_shizuku_permission_denied">Shizuku permission was not granted. Open Shizuku and allow this app before selecting this mode.</string>
+    <string name="settings_install_mode_shizuku_request_failed">Could not request Shizuku permission. Make sure Shizuku is running, then try again.</string>
+    <string name="settings_install_mode_unavailable_root">Root access is not available. Check your superuser prompt or manager app and grant this app root access.</string>
     <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku permission</string>
+    <string name="settings_shizuku_status_label">Shizuku status</string>
+    <string name="settings_root_status_label">Root status</string>
+    <string name="settings_status_available">Available</string>
+    <string name="settings_status_unavailable">Not available</string>
+    <string name="settings_status_checking">Checking…</string>
+    <string name="settings_status_permission_required">Permission required</string>
+    <string name="settings_status_shizuku_not_running">Not running</string>
+    <string name="settings_status_shizuku_outdated">Version too old</string>
 
     <!-- About -->
     <string name="about_title">About</string>

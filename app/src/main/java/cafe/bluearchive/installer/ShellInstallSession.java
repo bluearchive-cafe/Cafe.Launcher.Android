@@ -132,23 +132,46 @@ final class ShellInstallSession {
     }
 
     private int createSession() throws Exception {
-        String[] cmd = {
-                "pm", "install-create",
-                "-r",
-                "-i", installerPackage
+        String[][] commands = {
+                {
+                        "pm", "install-create",
+                        "-r",
+                        "--install-location", "0",
+                        "-i", installerPackage
+                },
+                {
+                        "pm", "install-create",
+                        "-r",
+                        "-i", installerPackage
+                }
         };
-        ShellExecutor.ShellResult result = shell.execute(cmd);
+        StringBuilder attempts = new StringBuilder();
 
-        if (!result.isSuccess()) {
-            throw new IOException("pm install-create failed (exit " + result.exitCode
-                    + "): " + result.err);
+        for (String[] cmd : commands) {
+            ShellExecutor.ShellResult result = shell.execute(cmd);
+            attempts.append("Command: ")
+                    .append(String.join(" ", cmd))
+                    .append("\nExit: ")
+                    .append(result.exitCode)
+                    .append("\nstdout:\n")
+                    .append(result.out == null ? "" : result.out)
+                    .append("\nstderr:\n")
+                    .append(result.err == null ? "" : result.err)
+                    .append("\n\n");
+
+            if (!result.isSuccess()) {
+                Log.w(TAG, "install-create command failed: " + String.join(" ", cmd));
+                continue;
+            }
+
+            Integer sessionId = extractSessionId(result.out);
+            if (sessionId != null) {
+                return sessionId;
+            }
+            Log.w(TAG, "Could not parse session ID from: " + result.out);
         }
 
-        Integer sessionId = extractSessionId(result.out);
-        if (sessionId == null) {
-            throw new IOException("Could not parse session ID from:\n" + result.out);
-        }
-        return sessionId;
+        throw new IOException("Could not create install session. Attempts:\n" + attempts);
     }
 
     private void abandonIfNeeded() {

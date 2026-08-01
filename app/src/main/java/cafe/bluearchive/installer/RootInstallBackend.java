@@ -6,9 +6,7 @@ import android.util.Log;
 import com.topjohnwu.superuser.Shell;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -23,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 final class RootInstallBackend implements InstallBackend {
 
     private static final String TAG = "RootInstallBackend";
+    private static final int ROOT_CHECK_TIMEOUT_SEC = 5;
 
     RootInstallBackend() {
     }
@@ -34,18 +33,48 @@ final class RootInstallBackend implements InstallBackend {
 
     @Override
     public boolean isAvailable(Context context) {
+        return isRootAvailable();
+    }
+
+    static boolean isRootAvailable() {
         try {
-            // Use a latch to make the async check synchronous.
+            Boolean grant = Shell.isAppGrantedRoot();
+            if (grant != null) {
+                return grant;
+            }
+
+            Shell cachedShell = Shell.getCachedShell();
+            if (cachedShell != null) {
+                return cachedShell.isRoot();
+            }
+
             CountDownLatch latch = new CountDownLatch(1);
             AtomicBoolean hasRoot = new AtomicBoolean(false);
+            AtomicReference<Exception> error = new AtomicReference<>();
 
             Shell.getShell(shell -> {
-                hasRoot.set(shell != null && shell.isRoot());
-                latch.countDown();
+                try {
+                    hasRoot.set(shell != null && shell.isRoot());
+                } catch (Exception e) {
+                    error.set(e);
+                } finally {
+                    latch.countDown();
+                }
             });
 
-            latch.await(3, TimeUnit.SECONDS);
+            if (!latch.await(ROOT_CHECK_TIMEOUT_SEC, TimeUnit.SECONDS)) {
+                Log.w(TAG, "Root availability check timed out");
+                return false;
+            }
+            if (error.get() != null) {
+                Log.w(TAG, "Root availability callback failed", error.get());
+                return false;
+            }
             return hasRoot.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.w(TAG, "Root availability check interrupted", e);
+            return false;
         } catch (Exception e) {
             Log.w(TAG, "Root availability check failed", e);
             return false;

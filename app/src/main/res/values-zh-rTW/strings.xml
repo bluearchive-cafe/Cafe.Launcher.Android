@@ -160,9 +160,21 @@
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安裝模式不可用</string>
     <string name="install_mode_fallback_message">%1$s 將改用系統安裝器。</string>
-    <string name="settings_install_mode_unavailable_shizuku">Shizuku 未執行或未授權。請啟動 Shizuku 並授權此應用程式。</string>
-    <string name="settings_install_mode_unavailable_root">Root 權限不可用。請確保裝置已 Root 且超級使用者應用程式已授權。</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku 不可用。請啟動 Shizuku 並授權此應用程式。</string>
+    <string name="settings_install_mode_shizuku_not_running">Shizuku 未執行。請先啟動 Shizuku，然後重試。</string>
+    <string name="settings_install_mode_shizuku_outdated">目前 Shizuku 版本過舊。請更新 Shizuku 後重試。</string>
+    <string name="settings_install_mode_shizuku_permission_denied">未授予 Shizuku 權限。請在 Shizuku 中允許此應用程式後再選擇此模式。</string>
+    <string name="settings_install_mode_shizuku_request_failed">無法請求 Shizuku 權限。請確認 Shizuku 正在執行，然後重試。</string>
+    <string name="settings_install_mode_unavailable_root">Root 權限不可用。請檢查超級使用者授權彈窗或管理應用程式，並授予此應用程式 Root 權限。</string>
     <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 權限</string>
+    <string name="settings_shizuku_status_label">Shizuku 狀態</string>
+    <string name="settings_root_status_label">Root 狀態</string>
+    <string name="settings_status_available">可用</string>
+    <string name="settings_status_unavailable">不可用</string>
+    <string name="settings_status_checking">正在檢查…</string>
+    <string name="settings_status_permission_required">需要授權</string>
+    <string name="settings_status_shizuku_not_running">未執行</string>
+    <string name="settings_status_shizuku_outdated">版本過舊</string>
 
     <!-- 關於 -->
     <string name="about_title">關於</string>

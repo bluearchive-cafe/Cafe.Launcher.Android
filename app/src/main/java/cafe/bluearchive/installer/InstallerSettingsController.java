@@ -5,12 +5,10 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,12 +21,18 @@ import rikka.shizuku.Shizuku;
 
 final class InstallerSettingsController {
 
+    private static final int SHIZUKU_PERMISSION_REQUEST_CODE = 1001;
+
     private final Activity activity;
     private final View themeRow;
     private final View languageRow;
     private final View installModeRow;
+    private final View shizukuStatusRow;
+    private final View rootStatusRow;
     private final View aboutRow;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private int rootStatusGeneration;
+    private boolean destroyed;
 
     // Holds state for a pending Shizuku permission request.
     private InstallMode pendingShizukuMode;
@@ -40,18 +44,25 @@ final class InstallerSettingsController {
                                 View themeRow,
                                 View languageRow,
                                 View installModeRow,
+                                View shizukuStatusRow,
+                                View rootStatusRow,
                                 View aboutRow) {
         this.activity = activity;
         this.themeRow = themeRow;
         this.languageRow = languageRow;
         this.installModeRow = installModeRow;
+        this.shizukuStatusRow = shizukuStatusRow;
+        this.rootStatusRow = rootStatusRow;
         this.aboutRow = aboutRow;
     }
 
     void bind() {
+        destroyed = false;
         bindThemeRow();
         bindLanguageRow();
         bindInstallModeRow();
+        bindShizukuStatusRow();
+        bindRootStatusRow();
         bindAboutRow();
     }
 
@@ -59,10 +70,9 @@ final class InstallerSettingsController {
      * Must be called from {@link Activity#onDestroy()} to clean up Shizuku listeners.
      */
     void destroy() {
-        if (shizukuPermissionListener != null) {
-            Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
-            shizukuPermissionListener = null;
-        }
+        destroyed = true;
+        rootStatusGeneration++;
+        clearPendingShizukuPermission();
         if (binderReceivedListener != null) {
             Shizuku.removeBinderReceivedListener(binderReceivedListener);
             binderReceivedListener = null;
@@ -152,19 +162,15 @@ final class InstallerSettingsController {
 
         // Binder lifecycle — when Shizuku dies while settings is open, clear
         // any pending permission state so the UI stays consistent.
-        binderReceivedListener = () -> {
-            // Shizuku reconnected; no action needed — next mode selection
-            // will re-validate availability.
-        };
+        binderReceivedListener = () -> mainHandler.post(this::updateShizukuStatusRow);
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener);
 
         binderDeadListener = () -> {
             mainHandler.post(() -> {
-                if (shizukuPermissionListener != null) {
-                    Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
-                    shizukuPermissionListener = null;
-                }
-                pendingShizukuMode = null;
+                clearPendingShizukuPermission();
+                updateInstallModeSubtitle(
+                        installModeRow.findViewById(R.id.settingSubtitle));
+                updateShizukuStatusRow();
             });
         };
         Shizuku.addBinderDeadListener(binderDeadListener);
@@ -182,6 +188,86 @@ final class InstallerSettingsController {
         } else {
             subtitle.setText(R.string.settings_install_mode_system);
         }
+    }
+
+    private void bindShizukuStatusRow() {
+        if (shizukuStatusRow == null) return;
+
+        ImageView icon = shizukuStatusRow.findViewById(R.id.settingIcon);
+        TextView title = shizukuStatusRow.findViewById(R.id.settingTitle);
+        ImageView chevron = shizukuStatusRow.findViewById(R.id.settingChevron);
+
+        icon.setImageResource(R.drawable.ic_settings_24);
+        icon.setContentDescription(activity.getString(R.string.settings_shizuku_status_label));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.settings_shizuku_status_label);
+        chevron.setVisibility(View.GONE);
+        shizukuStatusRow.setOnClickListener(null);
+        updateShizukuStatusRow();
+    }
+
+    private void updateShizukuStatusRow() {
+        if (shizukuStatusRow == null) return;
+        TextView subtitle = shizukuStatusRow.findViewById(R.id.settingSubtitle);
+        if (subtitle == null) return;
+
+        try {
+            if (!Shizuku.pingBinder()) {
+                subtitle.setText(R.string.settings_status_shizuku_not_running);
+            } else if (Shizuku.isPreV11()) {
+                subtitle.setText(R.string.settings_status_shizuku_outdated);
+            } else if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                subtitle.setText(R.string.settings_status_available);
+            } else {
+                subtitle.setText(R.string.settings_status_permission_required);
+            }
+        } catch (Exception e) {
+            subtitle.setText(R.string.settings_status_unavailable);
+        }
+    }
+
+    private void bindRootStatusRow() {
+        if (rootStatusRow == null) return;
+
+        ImageView icon = rootStatusRow.findViewById(R.id.settingIcon);
+        TextView title = rootStatusRow.findViewById(R.id.settingTitle);
+        TextView subtitle = rootStatusRow.findViewById(R.id.settingSubtitle);
+        ImageView chevron = rootStatusRow.findViewById(R.id.settingChevron);
+
+        icon.setImageResource(R.drawable.ic_settings_24);
+        icon.setContentDescription(activity.getString(R.string.settings_root_status_label));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.settings_root_status_label);
+        subtitle.setText(R.string.settings_status_checking);
+        chevron.setVisibility(View.GONE);
+        rootStatusRow.setOnClickListener(null);
+        refreshRootStatusRow();
+    }
+
+    private void refreshRootStatusRow() {
+        if (rootStatusRow == null) return;
+        int generation = ++rootStatusGeneration;
+        TextView subtitle = rootStatusRow.findViewById(R.id.settingSubtitle);
+        if (subtitle != null) {
+            subtitle.setText(R.string.settings_status_checking);
+        }
+
+        new Thread(() -> {
+            boolean isRoot = RootInstallBackend.isRootAvailable();
+            mainHandler.post(() -> {
+                if (destroyed || generation != rootStatusGeneration || rootStatusRow == null) return;
+                TextView rootSubtitle = rootStatusRow.findViewById(R.id.settingSubtitle);
+                if (rootSubtitle == null) return;
+                rootSubtitle.setText(isRoot
+                        ? R.string.settings_status_available
+                        : R.string.settings_status_unavailable);
+            });
+        }, "Root-status").start();
+    }
+
+    private void refreshStatusRows() {
+        updateShizukuStatusRow();
+        refreshRootStatusRow();
     }
 
     private void bindAboutRow() {
@@ -282,76 +368,75 @@ final class InstallerSettingsController {
         try {
             if (!Shizuku.pingBinder()) {
                 showUnavailableAndRevert(currentMode,
-                        activity.getString(R.string.settings_install_mode_unavailable_shizuku));
+                        activity.getString(R.string.settings_install_mode_shizuku_not_running));
                 return;
             }
             if (Shizuku.isPreV11()) {
                 showUnavailableAndRevert(currentMode,
-                        activity.getString(R.string.settings_install_mode_unavailable_shizuku));
+                        activity.getString(R.string.settings_install_mode_shizuku_outdated));
                 return;
             }
             int permission = Shizuku.checkSelfPermission();
             if (permission == PackageManager.PERMISSION_GRANTED) {
                 persistAndRecreate(selectedMode);
-            } else {
-                // Register a listener that fires when the user grants permission
-                // via the Shizuku permission dialog.
-                pendingShizukuMode = selectedMode;
-
-                if (shizukuPermissionListener != null) {
-                    Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
-                }
-                shizukuPermissionListener = (requestCode, grantResult) -> {
-                    mainHandler.post(() -> {
-                        if (pendingShizukuMode == null) return;
-                        if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                            persistAndRecreate(pendingShizukuMode);
-                        } else {
-                            showUnavailableAndRevert(currentMode,
-                                    activity.getString(R.string.settings_install_mode_unavailable_shizuku));
-                        }
-                        pendingShizukuMode = null;
-                    });
-                };
-                Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
-                Shizuku.requestPermission(0);
+                return;
             }
+            if (Shizuku.shouldShowRequestPermissionRationale()) {
+                showUnavailableAndRevert(currentMode,
+                        activity.getString(R.string.settings_install_mode_shizuku_permission_denied));
+                return;
+            }
+
+            pendingShizukuMode = selectedMode;
+            if (shizukuPermissionListener != null) {
+                Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
+            }
+            shizukuPermissionListener = (requestCode, grantResult) -> {
+                if (requestCode != SHIZUKU_PERMISSION_REQUEST_CODE) return;
+                mainHandler.post(() -> {
+                    InstallMode mode = pendingShizukuMode;
+                    clearPendingShizukuPermission();
+                    updateShizukuStatusRow();
+                    if (mode == null) return;
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        persistAndRecreate(mode);
+                    } else {
+                        showUnavailableAndRevert(currentMode,
+                                activity.getString(R.string.settings_install_mode_shizuku_permission_denied));
+                    }
+                });
+            };
+            Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
+            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE);
         } catch (Exception e) {
+            clearPendingShizukuPermission();
             showUnavailableAndRevert(currentMode,
-                    activity.getString(R.string.settings_install_mode_unavailable_shizuku));
+                    activity.getString(R.string.settings_install_mode_shizuku_request_failed));
         }
     }
 
-    private void validateRootAndSave(InstallMode currentMode, InstallMode selectedMode) {
-        // Perform a quick root check using libsu.
-        new Thread(() -> {
-            try {
-                com.topjohnwu.superuser.Shell shell =
-                        com.topjohnwu.superuser.Shell.getCachedShell();
-                boolean isRoot;
-                if (shell != null) {
-                    isRoot = shell.isRoot();
-                } else {
-                    com.topjohnwu.superuser.Shell.Result result =
-                            com.topjohnwu.superuser.Shell.cmd("id").exec();
-                    isRoot = result.isSuccess() && result.getOut().contains("uid=0");
-                }
+    private void clearPendingShizukuPermission() {
+        if (shizukuPermissionListener != null) {
+            Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
+            shizukuPermissionListener = null;
+        }
+        pendingShizukuMode = null;
+    }
 
-                mainHandler.post(() -> {
-                    if (isRoot) {
-                        persistAndRecreate(selectedMode);
-                    } else {
-                        showUnavailableAndRevert(currentMode,
-                                activity.getString(R.string.settings_install_mode_unavailable_root));
-                    }
-                });
-            } catch (Exception e) {
-                mainHandler.post(() -> {
+    private void validateRootAndSave(InstallMode currentMode, InstallMode selectedMode) {
+        // Perform the root check off the main thread; libsu may show a superuser prompt.
+        new Thread(() -> {
+            boolean isRoot = RootInstallBackend.isRootAvailable();
+            mainHandler.post(() -> {
+                if (isRoot) {
+                    persistAndRecreate(selectedMode);
+                } else {
+                    refreshRootStatusRow();
                     showUnavailableAndRevert(currentMode,
                             activity.getString(R.string.settings_install_mode_unavailable_root));
-                });
-            }
-        }).start();
+                }
+            });
+        }, "Root-check").start();
     }
 
     private void showUnavailableAndRevert(InstallMode currentMode, String message) {
@@ -377,6 +462,7 @@ final class InstallerSettingsController {
         }
         InstallerPreferences.save(activity, InstallerPreferences.PREF_INSTALL_MODE, value);
         updateInstallModeSubtitle(installModeRow.findViewById(R.id.settingSubtitle));
+        refreshStatusRows();
         activity.recreate();
     }
 

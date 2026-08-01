@@ -52,6 +52,14 @@
             <include
                 android:id="@+id/settingsInstallModeRow"
                 layout="@layout/row_installer_setting_item" />
+
+            <include
+                android:id="@+id/settingsShizukuStatusRow"
+                layout="@layout/row_installer_setting_item" />
+
+            <include
+                android:id="@+id/settingsRootStatusRow"
+                layout="@layout/row_installer_setting_item" />
         </LinearLayout>
 
         <TextView

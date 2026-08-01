@@ -118,24 +118,30 @@ final class ShizukuInstallBackend implements InstallBackend {
     // ── UserService binding ──────────────────────────────────────
 
     private void ensureBound(Context context) throws IOException {
-        if (serviceBound.get() && shellService != null) return;
+        IShellService current = shellService;
+        if (serviceBound.get() && current != null && current.asBinder().isBinderAlive()) return;
 
-        serviceArgs = new Shizuku.UserServiceArgs(
+        serviceBound.set(false);
+        shellService = null;
+
+        Shizuku.UserServiceArgs args = new Shizuku.UserServiceArgs(
                 new ComponentName(context.getPackageName(),
                         ShizukuShellService.class.getName()))
                 .daemon(false)
                 .processNameSuffix("service")
                 .tag("shell")
                 .version(1);
+        serviceArgs = args;
 
-        bindLatch = new CountDownLatch(1);
+        CountDownLatch latch = new CountDownLatch(1);
+        bindLatch = latch;
 
-        serviceConnection = new ServiceConnection() {
+        ServiceConnection connection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder binder) {
                 shellService = IShellService.Stub.asInterface(binder);
                 serviceBound.set(true);
-                bindLatch.countDown();
+                latch.countDown();
             }
 
             @Override
@@ -144,11 +150,12 @@ final class ShizukuInstallBackend implements InstallBackend {
                 serviceBound.set(false);
             }
         };
+        serviceConnection = connection;
 
-        Shizuku.bindUserService(serviceArgs, serviceConnection);
+        Shizuku.bindUserService(args, connection);
 
         try {
-            if (!bindLatch.await(BIND_TIMEOUT_SEC, TimeUnit.SECONDS)) {
+            if (!latch.await(BIND_TIMEOUT_SEC, TimeUnit.SECONDS)) {
                 throw new IOException("Timed out waiting for Shizuku UserService to bind");
             }
         } catch (InterruptedException e) {
@@ -215,9 +222,15 @@ final class ShizukuInstallBackend implements InstallBackend {
         @Override
         public ShellExecutor.ShellResult execute(String... command) throws Exception {
             IShellService svc = checkService();
-            cafe.bluearchive.installer.shizuku.ShellResult r =
-                    svc.exec(command, EXEC_TIMEOUT_SEC);
-            return convert(r);
+            try {
+                cafe.bluearchive.installer.shizuku.ShellResult r =
+                        svc.exec(command, EXEC_TIMEOUT_SEC);
+                return convert(r);
+            } catch (RemoteException e) {
+                serviceBound.set(false);
+                shellService = null;
+                throw new IOException("Shizuku service disconnected while executing command", e);
+            }
         }
 
         @Override
@@ -250,17 +263,36 @@ final class ShizukuInstallBackend implements InstallBackend {
                 cafe.bluearchive.installer.shizuku.ShellResult r =
                         svc.execWithStdin(command, WRITE_TIMEOUT_SEC, readEnd);
                 return convert(r);
+            } catch (RemoteException e) {
+                serviceBound.set(false);
+                shellService = null;
+                throw new IOException("Shizuku service disconnected while writing install data", e);
             } finally {
+                closeQuietly(readEnd);
+                closeQuietly(writeEnd);
                 stdinThread.join(30_000);
+                if (stdinThread.isAlive()) {
+                    stdinThread.interrupt();
+                }
             }
         }
 
         private IShellService checkService() throws IOException {
             IShellService svc = shellService;
-            if (svc == null) {
+            if (svc == null || !svc.asBinder().isBinderAlive()) {
+                serviceBound.set(false);
+                shellService = null;
                 throw new IOException("Shizuku UserService is not bound");
             }
             return svc;
+        }
+
+        private void closeQuietly(ParcelFileDescriptor fd) {
+            if (fd == null) return;
+            try {
+                fd.close();
+            } catch (IOException ignored) {
+            }
         }
 
         private ShellExecutor.ShellResult convert(
