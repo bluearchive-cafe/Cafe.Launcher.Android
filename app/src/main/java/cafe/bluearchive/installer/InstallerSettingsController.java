@@ -153,7 +153,7 @@ final class InstallerSettingsController {
         TextView subtitle = installModeRow.findViewById(R.id.settingSubtitle);
         ImageView chevron = installModeRow.findViewById(R.id.settingChevron);
 
-        icon.setImageResource(R.drawable.ic_settings_24);
+        icon.setImageResource(R.drawable.ic_system_update_24);
         icon.setContentDescription(activity.getString(R.string.settings_install_mode_label));
         icon.setVisibility(View.VISIBLE);
         title.setText(R.string.settings_install_mode_label);
@@ -234,7 +234,7 @@ final class InstallerSettingsController {
         TextView subtitle = rootStatusRow.findViewById(R.id.settingSubtitle);
         ImageView chevron = rootStatusRow.findViewById(R.id.settingChevron);
 
-        icon.setImageResource(R.drawable.ic_settings_24);
+        icon.setImageResource(R.drawable.ic_tag_24);
         icon.setContentDescription(activity.getString(R.string.settings_root_status_label));
         icon.setVisibility(View.VISIBLE);
         title.setText(R.string.settings_root_status_label);
