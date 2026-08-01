@@ -141,11 +141,11 @@
     <string name="settings_group_install_method">安装方式</string>
     <string name="settings_install_mode_label">安装模式</string>
     <string name="settings_install_mode_desc_system">使用标准 Android 包管理器安装。适用于所有设备，但可能需要授予"安装未知来源应用"权限。</string>
-    <string name="settings_install_mode_desc_shizuku">使用 Shizuku 以 ADB/Root 身份安装。绕过系统权限弹窗。\n\n需要已安装并运行 Shizuku。</string>
+    <string name="settings_install_mode_desc_shizuku">使用 Shizuku / Sui 以 ADB/Root 身份安装。绕过系统权限弹窗。\n\n需要已安装并运行 Shizuku 或 Sui。</string>
     <string name="settings_install_mode_desc_root">使用 Root (su) 直接安装。绕过所有权限弹窗。\n\n需要设备已 Root 并安装超级用户管理应用。</string>
     <string-array name="install_mode_options">
         <item>系统</item>
-        <item>Shizuku</item>
+        <item>Shizuku / Sui</item>
         <item>Root</item>
     </string-array>
     <string name="settings_theme_system">跟随系统</string>
@@ -156,18 +156,18 @@
     <string name="settings_language_zh_hant">繁體中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_install_mode_system">系统</string>
-    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_shizuku">Shizuku / Sui</string>
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安装模式不可用</string>
     <string name="install_mode_fallback_message">%1$s 将回退到系统安装器。</string>
-    <string name="settings_install_mode_unavailable_shizuku">Shizuku 不可用。请启动 Shizuku 并授权此应用。</string>
-    <string name="settings_install_mode_shizuku_not_running">Shizuku 未运行。请先启动 Shizuku，然后重试。</string>
-    <string name="settings_install_mode_shizuku_outdated">当前 Shizuku 版本过旧。请更新 Shizuku 后重试。</string>
-    <string name="settings_install_mode_shizuku_permission_denied">未授予 Shizuku 权限。请在 Shizuku 中允许此应用后再选择该模式。</string>
-    <string name="settings_install_mode_shizuku_request_failed">无法请求 Shizuku 权限。请确认 Shizuku 正在运行，然后重试。</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku / Sui 不可用。请启动 Shizuku / Sui 并授权此应用。</string>
+    <string name="settings_install_mode_shizuku_not_running">Shizuku / Sui 未运行。请先启动 Shizuku / Sui，然后重试。</string>
+    <string name="settings_install_mode_shizuku_outdated">当前 Shizuku / Sui 版本过旧。请更新 Shizuku / Sui 后重试。</string>
+    <string name="settings_install_mode_shizuku_permission_denied">未授予 Shizuku / Sui 权限。请在 Shizuku / Sui 中允许此应用后再选择该模式。</string>
+    <string name="settings_install_mode_shizuku_request_failed">无法请求 Shizuku / Sui 权限。请确认 Shizuku / Sui 正在运行，然后重试。</string>
     <string name="settings_install_mode_unavailable_root">Root 权限不可用。请检查超级用户授权弹窗或管理应用，并授予此应用 Root 权限。</string>
-    <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 权限</string>
-    <string name="settings_shizuku_status_label">Shizuku 状态</string>
+    <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku / Sui 权限</string>
+    <string name="settings_shizuku_status_label">Shizuku / Sui 状态</string>
     <string name="settings_root_status_label">Root 状态</string>
     <string name="settings_status_available">可用</string>
     <string name="settings_status_unavailable">不可用</string>
@@ -178,7 +178,7 @@
 
     <!-- 关于 -->
     <string name="about_title">关于</string>
-    <string name="about_description">蔚蓝咖啡厅安装器通过 CDN 下载并安装游戏，支持多种安装后端，包括 Shizuku 和 Root 模式。</string>
+    <string name="about_description">蔚蓝咖啡厅安装器通过 CDN 下载并安装游戏，支持多种安装后端，包括 Shizuku / Sui 和 Root 模式。</string>
     <string name="about_item_app_version">应用版本</string>
     <string name="about_item_source_code">源代码</string>
     <string name="about_item_licenses">开源许可</string>
@@ -207,7 +207,7 @@
     <string name="resource_panel_uid_source_auto">自动</string>
     <string name="resource_panel_uid_source_custom">自定义</string>
     <string name="resource_panel_uid_source_cookie">游戏 Cookie</string>
-    <string name="resource_panel_uid_source_shizuku">Shizuku</string>
+    <string name="resource_panel_uid_source_shizuku">Shizuku / Sui</string>
     <string name="resource_panel_uid_source_root">Root</string>
     <string name="resource_panel_uid_source_saved">已保存 UID</string>
     <string name="resource_panel_uid_manual_hint">8 位大写字母</string>

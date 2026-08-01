@@ -141,11 +141,11 @@
     <string name="settings_group_install_method">安裝方式</string>
     <string name="settings_install_mode_label">安裝模式</string>
     <string name="settings_install_mode_desc_system">使用標準 Android 套件管理器安裝。適用於所有裝置，但可能需要授予「安裝未知來源應用程式」權限。</string>
-    <string name="settings_install_mode_desc_shizuku">使用 Shizuku 以 ADB/Root 身分安裝。繞過系統權限彈窗。\n\n需要已安裝並執行 Shizuku。</string>
+    <string name="settings_install_mode_desc_shizuku">使用 Shizuku / Sui 以 ADB/Root 身分安裝。繞過系統權限彈窗。\n\n需要已安裝並執行 Shizuku 或 Sui。</string>
     <string name="settings_install_mode_desc_root">使用 Root (su) 直接安裝。繞過所有權限彈窗。\n\n需要裝置已 Root 並安裝超級使用者管理應用程式。</string>
     <string-array name="install_mode_options">
         <item>系統</item>
-        <item>Shizuku</item>
+        <item>Shizuku / Sui</item>
         <item>Root</item>
     </string-array>
     <string name="settings_theme_system">跟隨系統</string>
@@ -156,18 +156,18 @@
     <string name="settings_language_zh_hant">繁體中文</string>
     <string name="settings_language_en">English</string>
     <string name="settings_install_mode_system">系統</string>
-    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_shizuku">Shizuku / Sui</string>
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安裝模式不可用</string>
     <string name="install_mode_fallback_message">%1$s 將改用系統安裝器。</string>
-    <string name="settings_install_mode_unavailable_shizuku">Shizuku 不可用。請啟動 Shizuku 並授權此應用程式。</string>
-    <string name="settings_install_mode_shizuku_not_running">Shizuku 未執行。請先啟動 Shizuku，然後重試。</string>
-    <string name="settings_install_mode_shizuku_outdated">目前 Shizuku 版本過舊。請更新 Shizuku 後重試。</string>
-    <string name="settings_install_mode_shizuku_permission_denied">未授予 Shizuku 權限。請在 Shizuku 中允許此應用程式後再選擇此模式。</string>
-    <string name="settings_install_mode_shizuku_request_failed">無法請求 Shizuku 權限。請確認 Shizuku 正在執行，然後重試。</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku / Sui 不可用。請啟動 Shizuku / Sui 並授權此應用程式。</string>
+    <string name="settings_install_mode_shizuku_not_running">Shizuku / Sui 未執行。請先啟動 Shizuku / Sui，然後重試。</string>
+    <string name="settings_install_mode_shizuku_outdated">目前 Shizuku / Sui 版本過舊。請更新 Shizuku / Sui 後重試。</string>
+    <string name="settings_install_mode_shizuku_permission_denied">未授予 Shizuku / Sui 權限。請在 Shizuku / Sui 中允許此應用程式後再選擇此模式。</string>
+    <string name="settings_install_mode_shizuku_request_failed">無法請求 Shizuku / Sui 權限。請確認 Shizuku / Sui 正在執行，然後重試。</string>
     <string name="settings_install_mode_unavailable_root">Root 權限不可用。請檢查超級使用者授權彈窗或管理應用程式，並授予此應用程式 Root 權限。</string>
-    <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 權限</string>
-    <string name="settings_shizuku_status_label">Shizuku 狀態</string>
+    <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku / Sui 權限</string>
+    <string name="settings_shizuku_status_label">Shizuku / Sui 狀態</string>
     <string name="settings_root_status_label">Root 狀態</string>
     <string name="settings_status_available">可用</string>
     <string name="settings_status_unavailable">不可用</string>
@@ -178,7 +178,7 @@
 
     <!-- 關於 -->
     <string name="about_title">關於</string>
-    <string name="about_description">蔚藍咖啡廳安裝器透過 CDN 下載並安裝遊戲，支援多種安裝後端，包括 Shizuku 和 Root 模式。</string>
+    <string name="about_description">蔚藍咖啡廳安裝器透過 CDN 下載並安裝遊戲，支援多種安裝後端，包括 Shizuku / Sui 和 Root 模式。</string>
     <string name="about_item_app_version">應用程式版本</string>
     <string name="about_item_source_code">原始碼</string>
     <string name="about_item_licenses">開放原始碼授權</string>
@@ -207,7 +207,7 @@
     <string name="resource_panel_uid_source_auto">自動</string>
     <string name="resource_panel_uid_source_custom">自訂</string>
     <string name="resource_panel_uid_source_cookie">遊戲 Cookie</string>
-    <string name="resource_panel_uid_source_shizuku">Shizuku</string>
+    <string name="resource_panel_uid_source_shizuku">Shizuku / Sui</string>
     <string name="resource_panel_uid_source_root">Root</string>
     <string name="resource_panel_uid_source_saved">已儲存 UID</string>
     <string name="resource_panel_uid_manual_hint">8 位大寫字母</string>

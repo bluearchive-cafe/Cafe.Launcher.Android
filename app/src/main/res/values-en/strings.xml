@@ -139,11 +139,11 @@
     <string name="settings_group_install_method">Install method</string>
     <string name="settings_install_mode_label">Install mode</string>
     <string name="settings_install_mode_desc_system">Use the standard Android package installer. Works on all devices but may require granting "Install unknown apps" permission.</string>
-    <string name="settings_install_mode_desc_shizuku">Use Shizuku to install with ADB/root identity. Bypasses system permission dialogs.\n\nRequires Shizuku to be installed and running.</string>
+    <string name="settings_install_mode_desc_shizuku">Use Shizuku / Sui to install with ADB/root identity. Bypasses system permission dialogs.\n\nRequires Shizuku or Sui to be installed and running.</string>
     <string name="settings_install_mode_desc_root">Use root (su) to install directly. Bypasses all permission dialogs.\n\nRequires a rooted device with a superuser app.</string>
     <string-array name="install_mode_options">
         <item>System</item>
-        <item>Shizuku</item>
+        <item>Shizuku / Sui</item>
         <item>Root</item>
     </string-array>
     <string name="settings_theme_system">Follow system</string>
@@ -154,18 +154,18 @@
     <string name="settings_language_zh_hant">Traditional Chinese</string>
     <string name="settings_language_en">English</string>
     <string name="settings_install_mode_system">System</string>
-    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_shizuku">Shizuku / Sui</string>
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">Install mode unavailable</string>
     <string name="install_mode_fallback_message">%1$s Falling back to system installer.</string>
-    <string name="settings_install_mode_unavailable_shizuku">Shizuku is not available. Please start Shizuku and grant permission to this app.</string>
-    <string name="settings_install_mode_shizuku_not_running">Shizuku is not running. Start Shizuku, then try again.</string>
-    <string name="settings_install_mode_shizuku_outdated">This Shizuku version is too old. Update Shizuku, then try again.</string>
-    <string name="settings_install_mode_shizuku_permission_denied">Shizuku permission was not granted. Open Shizuku and allow this app before selecting this mode.</string>
-    <string name="settings_install_mode_shizuku_request_failed">Could not request Shizuku permission. Make sure Shizuku is running, then try again.</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku / Sui is not available. Please start Shizuku / Sui and grant permission to this app.</string>
+    <string name="settings_install_mode_shizuku_not_running">Shizuku / Sui is not running. Start Shizuku / Sui, then try again.</string>
+    <string name="settings_install_mode_shizuku_outdated">This Shizuku / Sui version is too old. Update Shizuku / Sui, then try again.</string>
+    <string name="settings_install_mode_shizuku_permission_denied">Shizuku / Sui permission was not granted. Open Shizuku / Sui and allow this app before selecting this mode.</string>
+    <string name="settings_install_mode_shizuku_request_failed">Could not request Shizuku / Sui permission. Make sure Shizuku / Sui is running, then try again.</string>
     <string name="settings_install_mode_unavailable_root">Root access is not available. Check your superuser prompt or manager app and grant this app root access.</string>
-    <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku permission</string>
-    <string name="settings_shizuku_status_label">Shizuku status</string>
+    <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku / Sui permission</string>
+    <string name="settings_shizuku_status_label">Shizuku / Sui status</string>
     <string name="settings_root_status_label">Root status</string>
     <string name="settings_status_available">Available</string>
     <string name="settings_status_unavailable">Not available</string>
@@ -176,7 +176,7 @@
 
     <!-- About -->
     <string name="about_title">About</string>
-    <string name="about_description">Blue Cafe Installer downloads and installs the game via CDN with multiple install backends, including Shizuku and Root support.</string>
+    <string name="about_description">Blue Cafe Installer downloads and installs the game via CDN with multiple install backends, including Shizuku / Sui and Root support.</string>
     <string name="about_item_app_version">App version</string>
     <string name="about_item_source_code">Source code</string>
     <string name="about_item_licenses">Licenses</string>
@@ -205,7 +205,7 @@
     <string name="resource_panel_uid_source_auto">Auto</string>
     <string name="resource_panel_uid_source_custom">Custom</string>
     <string name="resource_panel_uid_source_cookie">game cookie</string>
-    <string name="resource_panel_uid_source_shizuku">Shizuku</string>
+    <string name="resource_panel_uid_source_shizuku">Shizuku / Sui</string>
     <string name="resource_panel_uid_source_root">Root</string>
     <string name="resource_panel_uid_source_saved">saved UID</string>
     <string name="resource_panel_uid_manual_hint">Eight uppercase letters</string>
