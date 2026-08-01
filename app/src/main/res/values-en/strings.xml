@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Blue Cafe Installer</string>
-    <string name="checking_title">Checking system</string>
+    <string name="checking_title">Checking install readiness</string>
     <string name="checking_message">Checking device status…</string>
-    <string name="ready_download_title">Ready to download</string>
+    <string name="ready_download_title">Ready to install game</string>
     <string name="ready_download_message">The installer is ready. Download will start only after you continue.</string>
     <string name="ready_download_button">Download and install</string>
-    <string name="already_installed_title">Game installed</string>
+    <string name="already_installed_title">Game already installed</string>
     <string name="already_installed_message">%1$s (version %2$s) is already installed on this device.</string>
     <string name="already_installed_launch">Launch game</string>
     <string name="already_installed_reinstall">Reinstall</string>
-    <string name="downloading_title">Downloading</string>
+    <string name="downloading_title">Downloading game</string>
     <string name="downloading_preparing">Connecting to the download service…</string>
     <string name="downloading_using_cache">Checking cached download…</string>
     <string name="downloading_cache_invalid">Cached package is invalid. Downloading again…</string>
@@ -18,18 +18,18 @@
     <string name="downloading_progress_unknown">Downloaded %1$s</string>
     <string name="downloading_speed">%1$s</string>
     <string name="download_retry">Download again</string>
-    <string name="network_error_title">Network error</string>
+    <string name="network_error_title">Download network error</string>
     <string name="network_error_message">Download failed. Check your connection and try again.</string>
-    <string name="confirm_install_title">Ready to install</string>
+    <string name="confirm_install_title">Review installation</string>
     <string name="confirm_install_message">About to install %1$s\nPackage: %2$s\nVersion: %3$s\nSize: %4$s · %5$d split(s)</string>
     <string name="confirm_install_button">Install</string>
     <string name="confirm_cancel">Cancel</string>
-    <string name="confirm_update_title">New version found</string>
+    <string name="confirm_update_title">Review update</string>
     <string name="latest_version">Latest</string>
     <string name="confirm_update_message">%1$s\nPackage: %2$s\nInstalled: %3$s\nDownloaded: %4$s\nDownload size: %5$s · %6$d split(s)</string>
     <string name="confirm_update_button">Update</string>
     <string name="confirm_update_warning">Updating may keep or clear app data. Back up important data first.</string>
-    <string name="installing_title">Installing</string>
+    <string name="installing_title">Installing game</string>
     <string name="installing_preparing">Preparing installation…</string>
     <string name="installing_progress_split">%1$s (%2$d / %3$d)</string>
     <string name="installing_progress_pct">%1$d%% complete</string>
@@ -46,10 +46,10 @@
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
-    <string name="permission_title">Install permission required</string>
+    <string name="permission_title">Installation permission needed</string>
     <string name="permission_message">Allow this app to install unknown apps, then return to continue.</string>
     <string name="permission_grant">Open settings</string>
-    <string name="success_title">Installation complete</string>
+    <string name="success_title">Game installed</string>
     <string name="success_message">%1$s was installed successfully.</string>
     <string name="success_launch">Launch game</string>
     <string name="success_cleanup">Uninstall installer</string>
@@ -67,16 +67,16 @@
     <string name="notif_download_title">Downloading game</string>
     <string name="notif_download_message">Download is in progress. Do not close the app.</string>
     <string name="notif_install_message">Installation is in progress. Do not close the app.</string>
-    <string name="failed_title">Installation failed</string>
+    <string name="failed_title">Install failed</string>
     <string name="failed_message">Could not complete installation.</string>
     <string name="failed_retry">Retry</string>
     <string name="failed_details_show">Show details</string>
     <string name="failed_details_hide">Hide details</string>
     <string name="failed_launch_not_found">Could not find the game launch entry. The game may not be installed correctly.</string>
-    <string name="storage_low_title">Not enough storage</string>
+    <string name="storage_low_title">Storage space needed</string>
     <string name="storage_low_message">%1$s of free space is required, but only %2$s is available.\n\nFree up space and try again.</string>
     <string name="storage_recheck">Check again</string>
-    <string name="corrupted_title">Install data corrupted</string>
+    <string name="corrupted_title">Install package damaged</string>
     <string name="corrupted_message">Error unpacking install file: %1$s</string>
     <string name="close">Close</string>
     <string name="unknown_error">An unknown error occurred.</string>

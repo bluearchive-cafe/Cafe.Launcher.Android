@@ -673,6 +673,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: CHECKING ────────────────────────────────────────
 
     private void showChecking() {
+        statusIcon.setImageResource(R.drawable.ic_fact_check_24);
         titleText.setText(R.string.checking_title);
         messageText.setText(R.string.checking_message);
         indeterminateBar.setVisibility(View.VISIBLE);
@@ -683,6 +684,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: READY_TO_DOWNLOAD ────────────────────────────────
 
     private void showReadyToDownload() {
+        statusIcon.setImageResource(R.drawable.ic_download_for_offline_24);
         titleText.setText(R.string.ready_download_title);
         messageText.setText(R.string.ready_download_message);
         primaryButton.setText(R.string.ready_download_button);
@@ -698,6 +700,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: ALREADY_INSTALLED ───────────────────────────────
 
     private void showAlreadyInstalled() {
+        statusIcon.setImageResource(R.drawable.ic_install_mobile_24);
         String label = getAppLabel();
         String ver = existingPackage != null ? existingPackage.versionName : "?";
         titleText.setText(R.string.already_installed_title);
@@ -716,6 +719,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: DOWNLOADING ─────────────────────────────────────
 
     private void showDownloading() {
+        statusIcon.setImageResource(R.drawable.ic_nav_install_filled);
         titleText.setText(R.string.downloading_title);
         messageText.setText(R.string.downloading_preparing);
         downloadProgressDeterminate = false;
@@ -756,7 +760,7 @@ public final class InstallerActivity extends ComponentActivity {
     }
 
     private void showCorrupted() {
-        statusIcon.setImageResource(R.drawable.ic_status_error);
+        statusIcon.setImageResource(R.drawable.ic_report_problem_24);
         titleText.setText(R.string.corrupted_title);
         messageText.setText(getString(R.string.corrupted_message,
                 lastFailureDetail != null ? lastFailureDetail : getString(R.string.unknown_error)));
@@ -773,6 +777,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: CONFIRM_INSTALL / CONFIRM_UPDATE ────────────────
 
     private void showConfirmInstall() {
+        statusIcon.setImageResource(R.drawable.ic_install_mobile_24);
         messageText.setGravity(Gravity.START);
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         titleText.setText(R.string.confirm_install_title);
@@ -799,6 +804,7 @@ public final class InstallerActivity extends ComponentActivity {
     }
 
     private void showConfirmUpdate() {
+        statusIcon.setImageResource(R.drawable.ic_system_update_24);
         String oldVer = existingPackage != null ? existingPackage.versionName : "?";
         String newVer = downloadedVersionLabel();
         messageText.setGravity(Gravity.START);
@@ -845,7 +851,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: PERMISSION_DENIED ───────────────────────────────
 
     private void showPermissionDenied() {
-        statusIcon.setImageResource(R.drawable.ic_status_warning);
+        statusIcon.setImageResource(R.drawable.ic_admin_panel_settings_24);
         titleText.setText(R.string.permission_title);
         messageText.setText(R.string.permission_message);
 
@@ -870,6 +876,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: INSTALLING ──────────────────────────────────────
 
     private void showInstalling() {
+        statusIcon.setImageResource(R.drawable.ic_install_mobile_24);
         titleText.setText(R.string.installing_title);
         messageText.setText(lastFailureDetail != null
                 ? lastFailureDetail : getString(R.string.installing_preparing));
@@ -891,6 +898,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: CONFIRM_SYSTEM ──────────────────────────────────
 
     private void showConfirmSystem() {
+        statusIcon.setImageResource(R.drawable.ic_admin_panel_settings_24);
         titleText.setText(R.string.installing_title);
         messageText.setText(R.string.installing_confirm_system);
         indeterminateBar.setVisibility(View.VISIBLE);
@@ -963,6 +971,7 @@ public final class InstallerActivity extends ComponentActivity {
     // ── state: STORAGE_LOW ─────────────────────────────────────
 
     private void showStorageLow() {
+        statusIcon.setImageResource(R.drawable.ic_sd_storage_24);
         long free = getFreeSpace();
         long required = totalInstallBytes * MIN_FREE_SPACE_FACTOR;
         statusIcon.setImageResource(R.drawable.ic_status_warning);
