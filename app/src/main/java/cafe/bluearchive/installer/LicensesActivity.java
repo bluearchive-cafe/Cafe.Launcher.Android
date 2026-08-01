@@ -43,12 +43,16 @@ public final class LicensesActivity extends AppCompatActivity {
         licenseItems = new LicenseItem[]{
                 new LicenseItem(getString(R.string.license_item_app),
                         getString(R.string.license_mit), R.raw.license_mit),
-                new LicenseItem(getString(R.string.license_item_material_components),
-                        getString(R.string.license_apache_2), R.raw.license_apache_20),
                 new LicenseItem(getString(R.string.license_item_androidx_activity),
                         getString(R.string.license_apache_2), R.raw.license_apache_20),
-                new LicenseItem(getString(R.string.license_item_shizuku),
+                new LicenseItem(getString(R.string.license_item_androidx_core),
                         getString(R.string.license_apache_2), R.raw.license_apache_20),
+                new LicenseItem(getString(R.string.license_item_constraintlayout),
+                        getString(R.string.license_apache_2), R.raw.license_apache_20),
+                new LicenseItem(getString(R.string.license_item_material_components),
+                        getString(R.string.license_apache_2), R.raw.license_apache_20),
+                new LicenseItem(getString(R.string.license_item_shizuku),
+                        getString(R.string.license_mit), R.raw.license_shizuku_mit),
                 new LicenseItem(getString(R.string.license_item_libsu),
                         getString(R.string.license_apache_2), R.raw.license_apache_20)
         };
