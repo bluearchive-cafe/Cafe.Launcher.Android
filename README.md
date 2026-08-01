@@ -97,6 +97,31 @@ APKS_DOWNLOAD_URL=https://download.bluearchive.cafe/android/latest
 
 产物位于 `app/build/outputs/apk/`。
 
+## 发布版本
+
+`scripts/Build-Distribution.ps1` 用于准备正式发布产物，流程参考桌面端项目：读取 `app/build.gradle.kts` 中的 `versionName` / `versionCode`，校验发布 tag，构建 Release APK，并将产物整理到 `artifacts/distribution/`。
+
+```powershell
+# 使用 app/build.gradle.kts 中的 versionName 生成默认 tag (v<versionName>)
+pwsh ./scripts/Build-Distribution.ps1
+
+# 显式指定 tag；必须精确等于 v<versionName>
+pwsh ./scripts/Build-Distribution.ps1 -Tag v1.0.0
+```
+
+生成的文件包括：
+
+- `artifacts/distribution/Cafe.Launcher.Android_<tag>_apk.apk`
+- `artifacts/distribution/Cafe.Launcher.Android_<tag>_apk.apk.sha256`
+
+发布说明可通过 Git 历史生成：
+
+```powershell
+pwsh ./scripts/New-ReleaseChangelog.ps1 -PreviousTag v0.9.0 -OutputPath changelog.md
+```
+
+脚本只准备本地产物和发布说明，不会自动创建 tag、push 或上传 CDN。推送 `v*` tag 时，GitHub Actions 会运行 Release workflow，构建相同的分发产物并创建 GitHub Release。
+
 ## 部署到设备
 
 `scripts/deploy.ps1`（Windows / PowerShell）和 `scripts/deploy.sh`（macOS / Linux / Git Bash）自动完成**构建 → ADB 设备检测 → 安装 → 可选启动**的全流程。
