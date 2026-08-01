@@ -52,6 +52,36 @@ public class ApksArchiveParserTest {
         new ApksArchiveParser(new DownloadLimits(1024, 1024, 1024, 1)).parse(file);
     }
 
+    @Test(expected = java.util.zip.ZipException.class)
+    public void parseRejectsZeroSizedApk() throws Exception {
+        File file = File.createTempFile("archive", ".apks");
+        writeZip(file, new Entry("base.apk", 0));
+
+        new ApksArchiveParser(new DownloadLimits(1024, 1024, 1024, 4)).parse(file);
+    }
+
+    @Test(expected = java.util.zip.ZipException.class)
+    public void parseRejectsArchiveWithNoApks() throws Exception {
+        File file = File.createTempFile("archive", ".apks");
+        writeZip(file, new Entry("readme.txt", 1));
+
+        new ApksArchiveParser(new DownloadLimits(1024, 1024, 1024, 4)).parse(file);
+    }
+
+    @Test
+    public void parseCountsMixedCaseApkButStillRequiresBaseApk() throws Exception {
+        File file = File.createTempFile("archive", ".apks");
+        writeZip(file,
+                new Entry("base.apk", 1),
+                new Entry("config.locale.APK", 2));
+
+        ApksArchive archive = new ApksArchiveParser(new DownloadLimits(1024, 1024, 1024, 4))
+                .parse(file);
+
+        assertEquals(2, archive.splitCount());
+        assertEquals(3, archive.totalBytes());
+    }
+
     private static void writeZip(File file, Entry... entries) throws Exception {
         try (ZipOutputStream zip = new ZipOutputStream(new FileOutputStream(file))) {
             for (Entry entry : entries) {

@@ -19,6 +19,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 final class ResourcePanelController {
     private final InstallerActivity activity;
@@ -57,8 +58,7 @@ final class ResourcePanelController {
     }
 
     void bind() {
-        if (root == null) return;
-        destroyed = false;
+        if (root == null || destroyed) return;
         uidSummary = root.findViewById(R.id.resourcePanelUidSummary);
         uidSourceGroup = root.findViewById(R.id.resourcePanelUidSourceGroup);
         uidSourceAuto = root.findViewById(R.id.resourcePanelUidSourceAuto);
@@ -75,16 +75,7 @@ final class ResourcePanelController {
         bindItem(ResourcePanelModels.ResourceCode.VOICE, root.findViewById(R.id.resourcePanelVoiceItem));
         bindItem(ResourcePanelModels.ResourceCode.MEDIA, root.findViewById(R.id.resourcePanelMediaItem));
 
-        uidSourceGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            boolean custom = checkedId == R.id.resourcePanelUidSourceCustom;
-            setCustomUidVisible(custom);
-            if (custom) {
-                uidService.saveSource(ResourcePanelUidService.SOURCE_CUSTOM);
-            } else {
-                uidService.saveSource(ResourcePanelUidService.SOURCE_AUTO);
-            }
-            resolveUidAndMaybeLoad(true);
-        });
+        uidSourceGroup.setOnCheckedChangeListener(uidSourceChangeListener());
         uidSaveButton.setOnClickListener(view -> saveManualUid());
         refreshButton.setOnClickListener(view -> resolveUidAndMaybeLoad(true));
         saveButton.setOnClickListener(view -> save());
@@ -136,7 +127,7 @@ final class ResourcePanelController {
         setProgressVisible(true);
         updateButtons();
 
-        executor.execute(() -> {
+        submit(requestGeneration, () -> {
             ResourcePanelUidService.UidResult result = uidService.resolve();
             post(requestGeneration, () -> {
                 applyUidResult(result, true);
@@ -162,6 +153,17 @@ final class ResourcePanelController {
         applyUidResult(result, updateSourceButtons);
     }
 
+    private RadioGroup.OnCheckedChangeListener uidSourceChangeListener() {
+        return (group, checkedId) -> {
+            boolean custom = checkedId == R.id.resourcePanelUidSourceCustom;
+            setCustomUidVisible(custom);
+            uidService.saveSource(custom
+                    ? ResourcePanelUidService.SOURCE_CUSTOM
+                    : ResourcePanelUidService.SOURCE_AUTO);
+            resolveUidAndMaybeLoad(true);
+        };
+    }
+
     private void applyUidResult(ResourcePanelUidService.UidResult result, boolean updateSourceButtons) {
         effectiveUid = result.uid;
         uidSource = result.source;
@@ -173,16 +175,7 @@ final class ResourcePanelController {
             uidSourceGroup.check(ResourcePanelUidService.SOURCE_CUSTOM.equals(uidSource)
                     ? R.id.resourcePanelUidSourceCustom
                     : R.id.resourcePanelUidSourceAuto);
-            uidSourceGroup.setOnCheckedChangeListener((group, checkedId) -> {
-                boolean custom = checkedId == R.id.resourcePanelUidSourceCustom;
-                setCustomUidVisible(custom);
-                if (custom) {
-                    uidService.saveSource(ResourcePanelUidService.SOURCE_CUSTOM);
-                } else {
-                    uidService.saveSource(ResourcePanelUidService.SOURCE_AUTO);
-                }
-                resolveUidAndMaybeLoad(true);
-            });
+            uidSourceGroup.setOnCheckedChangeListener(uidSourceChangeListener());
         } else {
             if (uidSourceAuto != null) uidSourceAuto.setChecked(ResourcePanelUidService.SOURCE_AUTO.equals(uidSource));
             if (uidSourceCustom != null) uidSourceCustom.setChecked(ResourcePanelUidService.SOURCE_CUSTOM.equals(uidSource));
@@ -236,7 +229,7 @@ final class ResourcePanelController {
         }
         updateButtons();
 
-        executor.execute(() -> {
+        submit(requestGeneration, () -> {
             try {
                 ResourcePanelModels.LoadResult result = service.load(effectiveUid);
                 post(requestGeneration, () -> {
@@ -276,7 +269,7 @@ final class ResourcePanelController {
         showMessage(null);
         setProgressVisible(true);
         updateButtons();
-        executor.execute(() -> {
+        submit(requestGeneration, () -> {
             try {
                 service.save(effectiveUid, items);
                 post(requestGeneration, () -> {
@@ -375,6 +368,19 @@ final class ResourcePanelController {
     private void setProgressVisible(boolean visible) {
         if (progressBar != null) {
             progressBar.setVisibility(visible ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private void submit(int requestGeneration, Runnable runnable) {
+        if (destroyed) return;
+        try {
+            executor.execute(runnable);
+        } catch (RejectedExecutionException e) {
+            post(requestGeneration, () -> {
+                busy = false;
+                setProgressVisible(false);
+                updateButtons();
+            });
         }
     }
 

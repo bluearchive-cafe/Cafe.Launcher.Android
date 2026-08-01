@@ -33,6 +33,7 @@ final class ShellInstallSession {
     private final ShellExecutor shell;
     private final InstallCallback callback;
     private final String installerPackage;
+    private volatile boolean cancelled;
     private int pmSessionId = -1;
 
     ShellInstallSession(Context context, ApksArchive archive, File apksFile,
@@ -43,6 +44,17 @@ final class ShellInstallSession {
         this.shell = shell;
         this.callback = callback;
         this.installerPackage = context.getPackageName();
+    }
+
+    void cancel() {
+        cancelled = true;
+        abandonIfNeeded();
+    }
+
+    private void throwIfCancelled() throws IOException {
+        if (cancelled || Thread.currentThread().isInterrupted()) {
+            throw new IOException("Install cancelled");
+        }
     }
 
     /**
@@ -68,6 +80,7 @@ final class ShellInstallSession {
     }
 
     private void doInstall() throws Exception {
+        throwIfCancelled();
         pmSessionId = createSession();
         Log.d(TAG, "Created pm session " + pmSessionId);
 
@@ -77,6 +90,7 @@ final class ShellInstallSession {
             long totalWritten = 0;
 
             for (int i = 0; i < archive.splitCount(); i++) {
+                throwIfCancelled();
                 ApksArchive.Split split = archive.splitAt(i);
                 String entryName = split.entryName;
                 long splitSize = split.size;
@@ -104,6 +118,9 @@ final class ShellInstallSession {
                 if (!writeResult.isSuccess()) {
                     throw new IOException("install-write failed (exit " + writeResult.exitCode
                             + "): " + writeResult.err);
+                }
+                if (progressStream.splitWritten() != splitSize) {
+                    throw new IOException("APK split size did not match the archive metadata");
                 }
 
                 totalWritten += splitSize;
@@ -310,6 +327,10 @@ final class ShellInstallSession {
                         splitIndex, split.displayName,
                         splitWritten, splitSize);
             }
+        }
+
+        long splitWritten() {
+            return splitWritten;
         }
     }
 }

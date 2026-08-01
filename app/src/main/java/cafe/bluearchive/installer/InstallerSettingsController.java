@@ -162,6 +162,12 @@ final class InstallerSettingsController {
 
         // Binder lifecycle — when Shizuku dies while settings is open, clear
         // any pending permission state so the UI stays consistent.
+        if (binderReceivedListener != null) {
+            Shizuku.removeBinderReceivedListener(binderReceivedListener);
+        }
+        if (binderDeadListener != null) {
+            Shizuku.removeBinderDeadListener(binderDeadListener);
+        }
         binderReceivedListener = () -> mainHandler.post(this::updateShizukuStatusRow);
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener);
 
@@ -425,9 +431,11 @@ final class InstallerSettingsController {
 
     private void validateRootAndSave(InstallMode currentMode, InstallMode selectedMode) {
         // Perform the root check off the main thread; libsu may show a superuser prompt.
+        int generation = ++rootStatusGeneration;
         new Thread(() -> {
             boolean isRoot = RootInstallBackend.isRootAvailable();
             mainHandler.post(() -> {
+                if (destroyed || generation != rootStatusGeneration || installModeRow == null) return;
                 if (isRoot) {
                     persistAndRecreate(selectedMode);
                 } else {

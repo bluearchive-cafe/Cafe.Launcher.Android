@@ -14,8 +14,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -34,13 +32,8 @@ public final class ShizukuShellService extends IShellService.Stub {
 
     private static final int MAX_RESULT_BYTES = 64 * 1024; // 64 KiB safety cap
 
-    private Process currentProcess;
+    private volatile Process currentProcess;
     private volatile boolean cancelled;
-    private final ExecutorService drainExecutor = Executors.newFixedThreadPool(2, r -> {
-        Thread t = new Thread(r, "ShizukuSvc-drain");
-        t.setDaemon(true);
-        return t;
-    });
 
     // ── constructors ────────────────────────────────────────────
 
@@ -86,33 +79,42 @@ public final class ShizukuShellService extends IShellService.Stub {
             Thread stdOutThread = drain(process.getInputStream(), stdOutSb);
             Thread stdErrThread = drain(process.getErrorStream(), stdErrSb);
 
-            // Pipe stdin if provided.
+            Thread stdinThread = null;
             if (stdinPipe != null) {
-                try (InputStream pipeIn = new ParcelFileDescriptor
-                        .AutoCloseInputStream(stdinPipe);
-                     OutputStream processIn = process.getOutputStream()) {
-                    byte[] buf = new byte[64 * 1024];
-                    int n;
-                    while (!cancelled && (n = pipeIn.read(buf)) != -1) {
-                        processIn.write(buf, 0, n);
-                    }
-                } catch (IOException e) {
-                    Log.w(TAG, "Stdin pipe error", e);
+                stdinThread = pipeStdin(stdinPipe, process.getOutputStream(), stdErrSb);
+            } else {
+                try {
+                    process.getOutputStream().close();
+                } catch (IOException ignored) {
                 }
             }
 
-            // Wait for process completion with timeout.
+            // Wait for process completion with timeout. Stdin is copied on its own
+            // thread so this timeout covers both command execution and data upload.
             if (timeoutSec > 0) {
                 if (!process.waitFor(timeoutSec, TimeUnit.SECONDS)) {
                     Log.w(TAG, "Command timed out after " + timeoutSec + "s: "
                             + String.join(" ", cmd));
+                    cancelled = true;
+                    closeQuietly(process.getOutputStream());
                     process.destroy();
-                    process.destroyForcibly();
+                    if (!process.waitFor(1, TimeUnit.SECONDS)) {
+                        process.destroyForcibly();
+                        process.waitFor();
+                    }
                     stdErrSb.append("\n[Command timed out after ")
                             .append(timeoutSec).append(" seconds]");
                 }
             } else {
                 process.waitFor();
+            }
+
+            closeQuietly(process.getOutputStream());
+            if (stdinThread != null) {
+                stdinThread.join(5_000);
+                if (stdinThread.isAlive()) {
+                    stdinThread.interrupt();
+                }
             }
 
             exitCode = process.exitValue();
@@ -149,12 +151,34 @@ public final class ShizukuShellService extends IShellService.Stub {
     @Override
     public void destroy() throws RemoteException {
         cancel();
-        drainExecutor.shutdownNow();
         // Shizuku protocol requires System.exit(0) in destroy().
         System.exit(0);
     }
 
     // ── helpers ─────────────────────────────────────────────────
+
+    private Thread pipeStdin(ParcelFileDescriptor stdinPipe,
+                             OutputStream processIn,
+                             StringBuilder stdErrSb) {
+        Thread t = new Thread(() -> {
+            try (InputStream pipeIn = new ParcelFileDescriptor.AutoCloseInputStream(stdinPipe);
+                 OutputStream out = processIn) {
+                byte[] buf = new byte[64 * 1024];
+                int n;
+                while (!cancelled && (n = pipeIn.read(buf)) != -1) {
+                    out.write(buf, 0, n);
+                }
+            } catch (IOException e) {
+                if (!cancelled) {
+                    Log.w(TAG, "Stdin pipe error", e);
+                    stdErrSb.append('\n').append(e.getMessage());
+                }
+            }
+        }, "ShizukuSvc-stdin");
+        t.setDaemon(true);
+        t.start();
+        return t;
+    }
 
     private Thread drain(InputStream in, StringBuilder sb) {
         Thread t = new Thread(() -> {
@@ -171,6 +195,14 @@ public final class ShizukuShellService extends IShellService.Stub {
         t.setDaemon(true);
         t.start();
         return t;
+    }
+
+    private static void closeQuietly(OutputStream out) {
+        if (out == null) return;
+        try {
+            out.close();
+        } catch (IOException ignored) {
+        }
     }
 
     private static String truncate(String s, int maxBytes) {

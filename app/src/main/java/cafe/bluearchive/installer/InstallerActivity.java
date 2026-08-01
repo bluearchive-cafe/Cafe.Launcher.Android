@@ -92,6 +92,7 @@ public final class InstallerActivity extends ComponentActivity {
     private static final int PROGRESS_UPDATE_INTERVAL_MS = 200;
     private static final long MIN_FREE_SPACE_FACTOR = 2;
     private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024; // 64 KiB
+    private static final long MAX_RELEASE_MANIFEST_BYTES = 1024L * 1024L; // 1 MiB
 
     private static final String APKS_CACHE_FILE_NAME = "latest.apks";
 
@@ -147,6 +148,8 @@ public final class InstallerActivity extends ComponentActivity {
     private UiState currentState = UiState.CHECKING;
     private boolean installing;
     private InstallMode activeInstallMode;
+    private InstallBackend activeInstallBackend;
+    private Thread activeInstallThread;
     private PackageInfo existingPackage;
     private ApksArchive apksArchive;
     private ReleaseManifest releaseManifest;
@@ -310,8 +313,8 @@ public final class InstallerActivity extends ComponentActivity {
         if (resourcePanelController != null) {
             resourcePanelController.destroy();
         }
-        InstallBackendFactory.destroy();
         if (!installing) {
+            InstallBackendFactory.destroy();
             cleanupTempFiles();
         }
         // Remove notification when installation is no longer active
@@ -399,9 +402,13 @@ public final class InstallerActivity extends ComponentActivity {
      * thread and killing the shell process.
      */
     private void cancelActiveInstall() {
-        ShizukuInstallBackend shizuku = InstallBackendFactory.getShizukuBackendIfPresent();
-        if (shizuku != null) {
-            shizuku.cancel();
+        InstallBackend backend = activeInstallBackend;
+        if (backend != null) {
+            backend.cancel(this);
+        }
+        Thread thread = activeInstallThread;
+        if (thread != null) {
+            thread.interrupt();
         }
     }
 
@@ -624,9 +631,7 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void cleanupTempFiles() {
         File partial = new File(getCacheDir(), APKS_CACHE_FILE_NAME + ".partial");
-        if (partial.exists()) {
-            partial.delete();
-        }
+        FileCleanup.deleteBestEffort(TAG, partial);
     }
 
     private void abandonActiveSession() {
@@ -1093,7 +1098,8 @@ public final class InstallerActivity extends ComponentActivity {
                         expectedSize = manifest.apksSize;
                         expectedSha256 = manifest.apksSha256;
                     } catch (Exception manifestError) {
-                        Log.w(TAG, "Release manifest unavailable; falling back to download headers", manifestError);
+                        Log.e(TAG, "Release manifest verification failed", manifestError);
+                        throw manifestError;
                     }
                 }
 
@@ -1114,58 +1120,21 @@ public final class InstallerActivity extends ComponentActivity {
                 outputFile = new File(getCacheDir(), APKS_CACHE_FILE_NAME);
                 ApksArchive cachedArchive = tryUseCachedApks(outputFile, expectedSize, expectedSha256);
                 if (cachedArchive != null) {
-                    apksFile = outputFile;
-                    apksArchive = cachedArchive;
-                    totalInstallBytes = apksArchive.totalBytes();
-                    long free = getFreeSpace();
-                    if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
-                        postToUi(() -> setUiState(UiState.STORAGE_LOW));
-                        return;
-                    }
-                    postToUi(() -> {
-                        if (existingPackage != null) {
-                            setUiState(UiState.CONFIRM_UPDATE);
-                        } else {
-                            setUiState(UiState.CONFIRM_INSTALL);
-                        }
-                    });
+                    acceptValidatedApks(outputFile, cachedArchive);
                     return;
                 }
 
-                ApksDownloader.Result result = downloader.download(
+                downloader.download(
                         apksUrl, outputFile, operationCancelled, this::postDownloadProgress);
 
-                // Verify against manifest only when a signed manifest was used.
-                if (expectedSize >= 0 && expectedSize != result.bytes) {
-                    throw new IOException(getString(R.string.error_manifest_size_mismatch));
-                }
-                if (expectedSha256 != null && !expectedSha256.equals(result.sha256)) {
-                    throw new IOException(getString(R.string.error_manifest_hash_mismatch));
-                }
-
-                apksFile = outputFile;
-                apksArchive = new ApksArchiveParser(DownloadLimits.defaults())
-                        .parse(outputFile, getPackageManager());
-                totalInstallBytes = apksArchive.totalBytes();
-
-                long free = getFreeSpace();
-                if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
-                    postToUi(() -> setUiState(UiState.STORAGE_LOW));
-                    return;
-                }
-
-                postToUi(() -> {
-                    if (existingPackage != null) {
-                        setUiState(UiState.CONFIRM_UPDATE);
-                    } else {
-                        setUiState(UiState.CONFIRM_INSTALL);
-                    }
-                });
+                ApksArchive downloadedArchive = validateApksFile(
+                        outputFile, expectedSize, expectedSha256, releaseManifest);
+                acceptValidatedApks(outputFile, downloadedArchive);
 
             } catch (Exception e) {
                 if (e instanceof ApksDownloader.DownloadCancelledException) {
                     Log.i(TAG, "Download cancelled");
-                    if (outputFile != null) outputFile.delete();
+                    if (outputFile != null) FileCleanup.deleteBestEffort(TAG, outputFile);
                     apksFile = null;
                     apksArchive = null;
                     return;
@@ -1189,27 +1158,45 @@ public final class InstallerActivity extends ComponentActivity {
         }
         postToUi(() -> messageText.setText(R.string.downloading_using_cache));
         try {
-            if (expectedSize >= 0 && cacheFile.length() != expectedSize) {
-                throw new IOException(getString(R.string.error_manifest_size_mismatch));
-            }
-            if (expectedSha256 != null && !expectedSha256.equals(ApksDownloader.sha256(cacheFile))) {
-                throw new IOException(getString(R.string.error_manifest_hash_mismatch));
-            }
-            return new ApksArchiveParser(DownloadLimits.defaults())
-                    .parse(cacheFile, getPackageManager());
+            return validateApksFile(cacheFile, expectedSize, expectedSha256, releaseManifest);
         } catch (Exception e) {
             Log.w(TAG, "Cached APKS is invalid", e);
             postToUi(() -> messageText.setText(R.string.downloading_cache_invalid));
-            if (cacheFile.exists()) {
-                cacheFile.delete();
-            }
+            FileCleanup.deleteBestEffort(TAG, cacheFile);
             return null;
         }
     }
 
+    private ApksArchive validateApksFile(File apksFile, long expectedSize,
+                                         String expectedSha256,
+                                         ReleaseManifest manifest) throws IOException {
+        return new ApksAcceptanceValidator(this, DownloadLimits.defaults())
+                .validate(apksFile, expectedSize, expectedSha256, manifest, GAME_PACKAGE_NAME);
+    }
+
+    private void acceptValidatedApks(File file, ApksArchive archive) {
+        apksFile = file;
+        apksArchive = archive;
+        totalInstallBytes = archive.totalBytes();
+
+        long free = getFreeSpace();
+        if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
+            postToUi(() -> setUiState(UiState.STORAGE_LOW));
+            return;
+        }
+
+        postToUi(() -> {
+            if (existingPackage != null) {
+                setUiState(UiState.CONFIRM_UPDATE);
+            } else {
+                setUiState(UiState.CONFIRM_INSTALL);
+            }
+        });
+    }
+
     private ReleaseManifest fetchAndVerifyReleaseManifest(ApksDownloader downloader) throws Exception {
         String manifestJson = downloader.downloadText(
-                APKS_MANIFEST_URL, DownloadLimits.defaults().maxArchiveBytes, operationCancelled);
+                APKS_MANIFEST_URL, MAX_RELEASE_MANIFEST_BYTES, operationCancelled);
         ReleaseManifestVerifier verifier = new ReleaseManifestVerifier(
                 GAME_PACKAGE_NAME, RELEASE_MANIFEST_PUBLIC_KEY);
         return verifier.verify(manifestJson);
@@ -1360,11 +1347,12 @@ public final class InstallerActivity extends ComponentActivity {
         }
 
         activeInstallMode = backend.mode();
+        activeInstallBackend = backend;
         installing = true;
         setUiState(UiState.INSTALLING);
 
         installStartTime = System.currentTimeMillis();
-        new Thread(() -> {
+        Thread installThread = new Thread(() -> {
             try {
                 backend.install(this, apksArchive, apksFile, new InstallCallback() {
                     @Override
@@ -1414,8 +1402,15 @@ public final class InstallerActivity extends ComponentActivity {
                     lastFailureDetail = detail;
                     setUiState(UiState.FAILED);
                 });
+            } finally {
+                if (Thread.currentThread() == activeInstallThread) {
+                    activeInstallThread = null;
+                    activeInstallBackend = null;
+                }
             }
-        }, "install-thread").start();
+        }, "install-thread");
+        activeInstallThread = installThread;
+        installThread.start();
     }
 
     private long installStartTime;

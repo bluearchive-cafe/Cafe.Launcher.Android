@@ -10,18 +10,26 @@ final class ApksArchive {
     private final String packageName;
     private final String versionName;
     private final long versionCode;
+    private final String signerSha256;
 
     ApksArchive(List<Split> splits, long totalBytes) {
-        this(splits, totalBytes, null, null, -1);
+        this(splits, totalBytes, null, null, -1, null);
     }
 
     ApksArchive(List<Split> splits, long totalBytes,
                 String packageName, String versionName, long versionCode) {
+        this(splits, totalBytes, packageName, versionName, versionCode, null);
+    }
+
+    ApksArchive(List<Split> splits, long totalBytes,
+                String packageName, String versionName, long versionCode,
+                String signerSha256) {
         this.splits = Collections.unmodifiableList(new ArrayList<>(splits));
         this.totalBytes = totalBytes;
         this.packageName = packageName;
         this.versionName = versionName;
         this.versionCode = versionCode;
+        this.signerSha256 = signerSha256;
     }
 
     List<Split> splits() {
@@ -48,6 +56,9 @@ final class ApksArchive {
 
     /** Version code from the embedded base.apk, or -1 when unavailable. */
     long versionCode() { return versionCode; }
+
+    /** SHA-256 of the first base.apk signer cert, or null when unavailable. */
+    String signerSha256() { return signerSha256; }
 
     static final class Split {
         final String displayName;

@@ -45,4 +45,13 @@ public interface InstallBackend {
      */
     void install(Context context, ApksArchive archive, File apksFile,
                  InstallCallback callback) throws Exception;
+
+    /**
+     * Cancels any in-flight install owned by this backend.
+     * <p>
+     * Implementations should make this safe to call from the UI thread. The
+     * default is a no-op for backends that do not keep cancellable state.
+     */
+    default void cancel(Context context) {
+    }
 }

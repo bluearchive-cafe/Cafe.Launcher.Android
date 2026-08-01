@@ -15,7 +15,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipFile;
 
 /**
@@ -35,7 +34,9 @@ final class SystemInstallBackend implements InstallBackend {
 
     private static final int SPLIT_BUFFER_SIZE = 1024 * 1024; // 1 MiB
 
-    // Per-install mutable state. Only accessed from the install thread.
+    // Per-install mutable state. Guarded by sessionLock because cancellation
+    // can run from the UI thread while install() is writing on a worker thread.
+    private final Object sessionLock = new Object();
     private int activeSessionId = -1;
     private PackageInstaller.Session activeSession;
     private String installCallbackToken;
@@ -71,13 +72,13 @@ final class SystemInstallBackend implements InstallBackend {
         }
 
         int sessionId = pi.createSession(params);
-        activeSessionId = sessionId;
+        setActiveSession(sessionId, null);
         PackageInstaller.Session session = null;
         ZipFile zip = null;
 
         try {
             session = pi.openSession(sessionId);
-            activeSession = session;
+            setActiveSession(sessionId, session);
             zip = new ZipFile(apksFile);
 
             byte[] buffer = new byte[SPLIT_BUFFER_SIZE];
@@ -138,8 +139,7 @@ final class SystemInstallBackend implements InstallBackend {
             IntentSender sender = PendingIntent.getActivity(context, 0, callbackIntent, flags)
                     .getIntentSender();
             session.commit(sender);
-            activeSession = null;
-            activeSessionId = -1;
+            clearActiveSession();
             session.close();
             session = null;
             zip.close();
@@ -147,8 +147,7 @@ final class SystemInstallBackend implements InstallBackend {
 
         } catch (Exception e) {
             if (session != null) {
-                activeSession = null;
-                activeSessionId = -1;
+                clearActiveSession();
                 try {
                     session.abandon();
                 } catch (Exception ignored) {
@@ -175,39 +174,23 @@ final class SystemInstallBackend implements InstallBackend {
         }
     }
 
-    /**
-     * Abandons the currently active session (if any). Safe to call from any thread.
-     */
-    void abandonActiveSession() {
-        PackageInstaller.Session session = activeSession;
-        activeSession = null;
-        if (session != null) {
-            try {
-                session.abandon();
-            } catch (Exception ignored) {
-            }
-            try {
-                session.close();
-            } catch (Exception ignored) {
-            }
-        }
-        int sessionId = activeSessionId;
-        activeSessionId = -1;
-        if (sessionId >= 0) {
-            try {
-                // We need a Context to abandon here, but since this is called
-                // from InstallerActivity we rely on the activity's own cleanup.
-            } catch (Exception ignored) {
-            }
-        }
+    @Override
+    public void cancel(Context context) {
+        abandonActiveSession(context);
     }
 
     /**
      * Abandons the session using the given context's PackageInstaller.
      */
     void abandonActiveSession(Context context) {
-        PackageInstaller.Session session = activeSession;
-        activeSession = null;
+        PackageInstaller.Session session;
+        int sessionId;
+        synchronized (sessionLock) {
+            session = activeSession;
+            sessionId = activeSessionId;
+            activeSession = null;
+            activeSessionId = -1;
+        }
         if (session != null) {
             try {
                 session.abandon();
@@ -218,13 +201,25 @@ final class SystemInstallBackend implements InstallBackend {
             } catch (Exception ignored) {
             }
         }
-        int sessionId = activeSessionId;
-        activeSessionId = -1;
         if (sessionId >= 0) {
             try {
                 context.getPackageManager().getPackageInstaller().abandonSession(sessionId);
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    private void setActiveSession(int sessionId, PackageInstaller.Session session) {
+        synchronized (sessionLock) {
+            activeSessionId = sessionId;
+            activeSession = session;
+        }
+    }
+
+    private void clearActiveSession() {
+        synchronized (sessionLock) {
+            activeSession = null;
+            activeSessionId = -1;
         }
     }
 

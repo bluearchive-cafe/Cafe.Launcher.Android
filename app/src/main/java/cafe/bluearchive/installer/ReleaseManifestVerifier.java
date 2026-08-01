@@ -4,13 +4,13 @@ import android.util.Base64;
 
 import org.json.JSONException;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Locale;
 
 final class ReleaseManifestVerifier {
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
@@ -39,11 +39,20 @@ final class ReleaseManifestVerifier {
         if (!manifest.apksSha256.matches("[0-9a-f]{64}")) {
             throw new GeneralSecurityException("Release manifest APKS digest is invalid");
         }
+        if (!manifest.signerSha256.isEmpty()
+                && !manifest.signerSha256.matches("[0-9a-f]{64}")) {
+            throw new GeneralSecurityException("Release manifest signer digest is invalid");
+        }
         if (manifest.apksSize <= 0) {
             throw new GeneralSecurityException("Release manifest APKS size is invalid");
         }
-        String url = manifest.apksUrl.toLowerCase(Locale.ROOT);
-        if (!url.startsWith("https://")) {
+        URI uri;
+        try {
+            uri = URI.create(manifest.apksUrl);
+        } catch (IllegalArgumentException e) {
+            throw new GeneralSecurityException("Release manifest APKS URL is invalid", e);
+        }
+        if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null) {
             throw new GeneralSecurityException("Release manifest APKS URL must use HTTPS");
         }
         return manifest;

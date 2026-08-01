@@ -2,6 +2,7 @@ package cafe.bluearchive.installer;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.Build;
 
 import androidx.core.content.pm.PackageInfoCompat;
 
@@ -9,6 +10,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -28,16 +31,20 @@ final class ApksArchiveParser {
     }
 
     ApksArchive parse(File apksFile) throws IOException {
-        return parse(apksFile, null);
+        return parse(apksFile, null, null, false);
+    }
+
+    ApksArchive parse(File apksFile, PackageManager pm) throws IOException {
+        return parse(apksFile, pm, null, false);
     }
 
     /**
-     * Parses the APKS container, optionally extracting version info from
+     * Parses the APKS container, optionally extracting package metadata from
      * {@code base.apk} by calling
      * {@link PackageManager#getPackageArchiveInfo(String, int)}.
      */
-    ApksArchive parse(File apksFile,
-                      PackageManager pm) throws IOException {
+    ApksArchive parse(File apksFile, PackageManager pm, File tempDir,
+                      boolean requirePackageMetadata) throws IOException {
         List<ApksArchive.Split> splits = new ArrayList<>();
         Set<String> displayNames = new HashSet<>();
         long totalBytes = 0;
@@ -45,6 +52,7 @@ final class ApksArchiveParser {
         String apkPackageName = null;
         String apkVersionName = null;
         long apkVersionCode = -1;
+        String signerSha256 = null;
 
         try (ZipFile zip = new ZipFile(apksFile)) {
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -73,13 +81,18 @@ final class ApksArchiveParser {
                 }
                 if ("base.apk".equals(displayName)) {
                     hasBaseApk = true;
-                    // Extract package/version info from base.apk via PackageManager.
                     if (pm != null) {
-                        PackageInfo pi = readPackageArchiveInfo(zip, entry, pm);
+                        PackageInfo pi = readPackageArchiveInfo(zip, entry, pm, tempDir,
+                                requirePackageMetadata);
                         if (pi != null) {
                             apkPackageName = pi.packageName;
                             apkVersionName = pi.versionName;
                             apkVersionCode = PackageInfoCompat.getLongVersionCode(pi);
+                            try {
+                                signerSha256 = firstSignerSha256(pi);
+                            } catch (NoSuchAlgorithmException e) {
+                                throw new IOException("SHA-256 is not available", e);
+                            }
                         }
                     }
                 }
@@ -103,16 +116,22 @@ final class ApksArchiveParser {
         if (!hasBaseApk) {
             throw new ZipException("APKS file is missing base.apk");
         }
+        if (requirePackageMetadata && (apkPackageName == null || apkPackageName.isEmpty())) {
+            throw new ZipException("Could not read package metadata from base.apk");
+        }
 
         Collections.sort(splits, (left, right) -> left.displayName.compareTo(right.displayName));
-        return new ApksArchive(splits, totalBytes, apkPackageName, apkVersionName, apkVersionCode);
+        return new ApksArchive(splits, totalBytes, apkPackageName, apkVersionName,
+                apkVersionCode, signerSha256);
     }
 
     private PackageInfo readPackageArchiveInfo(ZipFile zip, ZipEntry entry,
-                                               PackageManager pm) {
+                                               PackageManager pm, File tempDir,
+                                               boolean requirePackageMetadata)
+            throws IOException {
         File tempBaseApk = null;
         try {
-            tempBaseApk = File.createTempFile("base-", ".apk");
+            tempBaseApk = File.createTempFile("base-", ".apk", tempDir);
             try (InputStream in = zip.getInputStream(entry);
                  FileOutputStream out = new FileOutputStream(tempBaseApk)) {
                 byte[] buffer = new byte[64 * 1024];
@@ -121,13 +140,55 @@ final class ApksArchiveParser {
                     out.write(buffer, 0, count);
                 }
             }
-            return pm.getPackageArchiveInfo(tempBaseApk.getAbsolutePath(), 0);
-        } catch (Exception ignored) {
+            PackageInfo pi = pm.getPackageArchiveInfo(tempBaseApk.getAbsolutePath(), packageInfoFlags());
+            if (pi == null && requirePackageMetadata) {
+                throw new ZipException("Could not parse package metadata from base.apk");
+            }
+            return pi;
+        } catch (IOException e) {
+            if (requirePackageMetadata) throw e;
+            return null;
+        } catch (Exception e) {
+            if (requirePackageMetadata) {
+                ZipException zipException = new ZipException("Could not parse package metadata from base.apk");
+                zipException.initCause(e);
+                throw zipException;
+            }
             return null;
         } finally {
-            if (tempBaseApk != null) {
-                tempBaseApk.delete();
+            if (tempBaseApk != null && !tempBaseApk.delete()) {
+                tempBaseApk.deleteOnExit();
             }
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static int packageInfoFlags() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return PackageManager.GET_SIGNING_CERTIFICATES;
+        }
+        return PackageManager.GET_SIGNATURES;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static String firstSignerSha256(PackageInfo pi) throws NoSuchAlgorithmException {
+        android.content.pm.Signature[] signatures = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && pi.signingInfo != null) {
+            signatures = pi.signingInfo.hasMultipleSigners()
+                    ? pi.signingInfo.getApkContentsSigners()
+                    : pi.signingInfo.getSigningCertificateHistory();
+        } else if (pi.signatures != null) {
+            signatures = pi.signatures;
+        }
+        if (signatures == null || signatures.length == 0) {
+            return null;
+        }
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(signatures[0].toByteArray());
+        StringBuilder sb = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            sb.append(String.format(Locale.ROOT, "%02x", b & 0xff));
+        }
+        return sb.toString();
     }
 }

@@ -14,10 +14,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import rikka.shizuku.Shizuku;
 
@@ -46,6 +46,8 @@ final class ShizukuInstallBackend implements InstallBackend {
     private CountDownLatch bindLatch;
     private volatile boolean cancelled;
     private volatile boolean destroyed;
+    private final Object sessionLock = new Object();
+    private ShellInstallSession activeSession;
 
     // Binder lifecycle listeners (registered once).
     private final Shizuku.OnBinderReceivedListener binderReceivedListener =
@@ -84,24 +86,32 @@ final class ShizukuInstallBackend implements InstallBackend {
 
     @Override
     public String unavailableMessage(Context context) {
-        if (!Shizuku.pingBinder()) {
-            return "Shizuku is not running. Please start Shizuku first.";
+        try {
+            if (!Shizuku.pingBinder()) {
+                return "Shizuku is not running. Please start Shizuku first.";
+            }
+            if (Shizuku.isPreV11()) {
+                return "Shizuku version is too old. Please update to the latest version.";
+            }
+            if (Shizuku.checkSelfPermission()
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                return "Shizuku permission has not been granted. "
+                        + "Please grant permission in Settings.";
+            }
+            return "Shizuku is not available.";
+        } catch (Exception e) {
+            Log.w(TAG, "Shizuku unavailable message check failed", e);
+            return "Shizuku is not available. Please make sure Shizuku is running and permission is granted.";
         }
-        if (Shizuku.isPreV11()) {
-            return "Shizuku version is too old. Please update to the latest version.";
-        }
-        if (Shizuku.checkSelfPermission()
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            return "Shizuku permission has not been granted. "
-                    + "Please grant permission in Settings.";
-        }
-        return "Shizuku is not available.";
     }
 
     @Override
     public void install(Context context, ApksArchive archive, File apksFile,
                         InstallCallback callback) throws Exception {
 
+        if (destroyed) {
+            throw new IOException("Shizuku backend has been destroyed");
+        }
         if (!isAvailable(context)) {
             throw new IOException(unavailableMessage(context));
         }
@@ -112,10 +122,24 @@ final class ShizukuInstallBackend implements InstallBackend {
         ShellExecutor shell = new UserServiceShellExecutor();
         ShellInstallSession session = new ShellInstallSession(
                 context, archive, apksFile, shell, callback);
-        session.run();
+        synchronized (sessionLock) {
+            activeSession = session;
+        }
+        try {
+            session.run();
+        } finally {
+            synchronized (sessionLock) {
+                if (activeSession == session) {
+                    activeSession = null;
+                }
+            }
+        }
     }
 
     ShellExecutor.ShellResult executeShell(Context context, String... command) throws Exception {
+        if (destroyed) {
+            throw new IOException("Shizuku backend has been destroyed");
+        }
         if (!isAvailable(context)) {
             throw new IOException(unavailableMessage(context));
         }
@@ -127,6 +151,12 @@ final class ShizukuInstallBackend implements InstallBackend {
     // ── UserService binding ──────────────────────────────────────
 
     private void ensureBound(Context context) throws IOException {
+        if (destroyed) {
+            throw new IOException("Shizuku backend has been destroyed");
+        }
+        if (cancelled || Thread.currentThread().isInterrupted()) {
+            throw new IOException("Install cancelled");
+        }
         IShellService current = shellService;
         if (serviceBound.get() && current != null && current.asBinder().isBinderAlive()) return;
 
@@ -144,10 +174,15 @@ final class ShizukuInstallBackend implements InstallBackend {
 
         CountDownLatch latch = new CountDownLatch(1);
         bindLatch = latch;
+        AtomicBoolean attemptActive = new AtomicBoolean(true);
 
         ServiceConnection connection = new ServiceConnection() {
             @Override
             public void onServiceConnected(ComponentName name, IBinder binder) {
+                if (!attemptActive.get() || destroyed || cancelled) {
+                    latch.countDown();
+                    return;
+                }
                 shellService = IShellService.Stub.asInterface(binder);
                 serviceBound.set(true);
                 latch.countDown();
@@ -155,21 +190,50 @@ final class ShizukuInstallBackend implements InstallBackend {
 
             @Override
             public void onServiceDisconnected(ComponentName name) {
-                shellService = null;
-                serviceBound.set(false);
+                if (serviceConnection == this) {
+                    shellService = null;
+                    serviceBound.set(false);
+                }
             }
         };
         serviceConnection = connection;
 
-        Shizuku.bindUserService(args, connection);
-
         try {
+            Shizuku.bindUserService(args, connection);
             if (!latch.await(BIND_TIMEOUT_SEC, TimeUnit.SECONDS)) {
+                attemptActive.set(false);
+                unbindQuietly(args, connection, false);
+                if (serviceConnection == connection) {
+                    serviceConnection = null;
+                    shellService = null;
+                    serviceBound.set(false);
+                }
                 throw new IOException("Timed out waiting for Shizuku UserService to bind");
             }
+            if (cancelled || Thread.currentThread().isInterrupted()) {
+                attemptActive.set(false);
+                unbindQuietly(args, connection, false);
+                throw new IOException("Install cancelled");
+            }
         } catch (InterruptedException e) {
+            attemptActive.set(false);
+            unbindQuietly(args, connection, false);
+            if (serviceConnection == connection) {
+                serviceConnection = null;
+                shellService = null;
+                serviceBound.set(false);
+            }
             Thread.currentThread().interrupt();
             throw new IOException("Interrupted while binding Shizuku UserService", e);
+        } catch (RuntimeException e) {
+            attemptActive.set(false);
+            unbindQuietly(args, connection, false);
+            if (serviceConnection == connection) {
+                serviceConnection = null;
+                shellService = null;
+                serviceBound.set(false);
+            }
+            throw new IOException("Failed to bind Shizuku UserService", e);
         }
     }
 
@@ -194,8 +258,20 @@ final class ShizukuInstallBackend implements InstallBackend {
     /**
      * Cancels any in-flight shell command.  Safe to call from any thread.
      */
+    @Override
+    public void cancel(Context context) {
+        cancel();
+    }
+
     void cancel() {
         cancelled = true;
+        ShellInstallSession session;
+        synchronized (sessionLock) {
+            session = activeSession;
+        }
+        if (session != null) {
+            session.cancel();
+        }
         IShellService svc = shellService;
         if (svc != null) {
             try {
@@ -218,10 +294,20 @@ final class ShizukuInstallBackend implements InstallBackend {
         Shizuku.removeBinderDeadListener(binderDeadListener);
 
         if (serviceConnection != null && serviceArgs != null) {
-            Shizuku.unbindUserService(serviceArgs, serviceConnection, true);
+            unbindQuietly(serviceArgs, serviceConnection, true);
         }
         shellService = null;
         serviceBound.set(false);
+    }
+
+    private void unbindQuietly(Shizuku.UserServiceArgs args,
+                               ServiceConnection connection,
+                               boolean remove) {
+        try {
+            Shizuku.unbindUserService(args, connection, remove);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to unbind Shizuku UserService", e);
+        }
     }
 
     // ── ShellExecutor adapter ────────────────────────────────────
@@ -251,6 +337,8 @@ final class ShizukuInstallBackend implements InstallBackend {
             ParcelFileDescriptor readEnd = pipe[0];
             ParcelFileDescriptor writeEnd = pipe[1];
 
+            AtomicReference<IOException> stdinError = new AtomicReference<>();
+
             // Write stdin on a background thread.
             Thread stdinThread = new Thread(() -> {
                 try (OutputStream out = new ParcelFileDescriptor
@@ -261,6 +349,7 @@ final class ShizukuInstallBackend implements InstallBackend {
                         out.write(buf, 0, n);
                     }
                 } catch (IOException e) {
+                    stdinError.set(e);
                     if (!cancelled) {
                         Log.w(TAG, "Stdin write error", e);
                     }
@@ -271,7 +360,12 @@ final class ShizukuInstallBackend implements InstallBackend {
             try {
                 cafe.bluearchive.installer.shizuku.ShellResult r =
                         svc.execWithStdin(command, WRITE_TIMEOUT_SEC, readEnd);
-                return convert(r);
+                ShellExecutor.ShellResult result = convert(r);
+                IOException writerFailure = stdinError.get();
+                if (writerFailure != null && !cancelled) {
+                    throw new IOException("Failed to send install data to Shizuku service", writerFailure);
+                }
+                return result;
             } catch (RemoteException e) {
                 serviceBound.set(false);
                 shellService = null;
@@ -279,7 +373,14 @@ final class ShizukuInstallBackend implements InstallBackend {
             } finally {
                 closeQuietly(readEnd);
                 closeQuietly(writeEnd);
-                stdinThread.join(30_000);
+                try {
+                    stdinThread.join(30_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    cancelled = true;
+                    stdinThread.interrupt();
+                    throw new IOException("Interrupted while sending install data to Shizuku service", e);
+                }
                 if (stdinThread.isAlive()) {
                     stdinThread.interrupt();
                 }
@@ -287,6 +388,12 @@ final class ShizukuInstallBackend implements InstallBackend {
         }
 
         private IShellService checkService() throws IOException {
+            if (destroyed) {
+                throw new IOException("Shizuku backend has been destroyed");
+            }
+            if (cancelled || Thread.currentThread().isInterrupted()) {
+                throw new IOException("Install cancelled");
+            }
             IShellService svc = shellService;
             if (svc == null || !svc.asBinder().isBinderAlive()) {
                 serviceBound.set(false);

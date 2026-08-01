@@ -50,6 +50,13 @@ final class ApksDownloader {
         }
     }
 
+    private enum RedirectPolicy {
+        ALLOW_INITIAL_SCHEME,
+        REQUIRE_HTTPS
+    }
+
+    private static final int MAX_REDIRECTS = 5;
+
     private final DownloadLimits limits;
     private final int bufferSize;
     private final int progressIntervalMs;
@@ -62,43 +69,11 @@ final class ApksDownloader {
 
     Result download(String urlString, File dest, AtomicBoolean cancelled,
                     ProgressCallback progressCallback) throws IOException {
-        HttpURLConnection conn = null;
         File partial = new File(dest.getParentFile(), dest.getName() + ".partial");
-
-        // Follow redirects manually because Android's built-in
-        // HttpURLConnection.setInstanceFollowRedirects(true) refuses to follow
-        // HTTPS → HTTP downgrades, which many CDNs use for content delivery.
-        int maxRedirects = 5;
-        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+        try {
+            HttpURLConnection conn = openFinalConnection(urlString, "GET", cancelled,
+                    RedirectPolicy.ALLOW_INITIAL_SCHEME);
             try {
-                URL url = new URL(urlString);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-                conn.setRequestMethod("GET");
-                conn.connect();
-
-                int status = conn.getResponseCode();
-                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
-                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        status == HttpURLConnection.HTTP_SEE_OTHER ||
-                        status == 307 ||
-                        status == 308) {
-                    String location = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    conn = null;
-                    if (location == null || location.isEmpty()) {
-                        throw new IOException("HTTP " + status + " with no Location header");
-                    }
-                    urlString = new URL(new URL(urlString), location).toString();
-                    continue;
-                }
-
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(describeHttpStatus(status));
-                }
-
                 long totalSize = contentLength(conn);
                 if (totalSize > limits.maxArchiveBytes) {
                     throw new IOException("Download is too large");
@@ -119,9 +94,7 @@ final class ApksDownloader {
                      FileOutputStream out = new FileOutputStream(partial)) {
                     int count;
                     while ((count = in.read(buffer)) != -1) {
-                        if (cancelled != null && cancelled.get()) {
-                            throw new DownloadCancelledException();
-                        }
+                        throwIfCancelled(cancelled);
                         downloaded += count;
                         if (downloaded > limits.maxArchiveBytes) {
                             throw new IOException("Download exceeded size limit");
@@ -157,18 +130,16 @@ final class ApksDownloader {
                     progressCallback.onProgress(downloaded, totalSize, bps, elapsed);
                 }
                 return new Result(dest, downloaded, sha256, headerSha256);
-            } catch (IOException e) {
-                deleteIfExists(partial);
-                // Don't wrap DownloadCancelledException
-                if (e instanceof DownloadCancelledException) {
-                    throw e;
-                }
-                throw wrapNetworkError(e);
             } finally {
-                if (conn != null) conn.disconnect();
+                conn.disconnect();
             }
+        } catch (IOException e) {
+            deleteIfExists(partial);
+            if (e instanceof DownloadCancelledException) {
+                throw e;
+            }
+            throw wrapNetworkError(e);
         }
-        throw new IOException("Too many redirects");
     }
 
     ProbeResult probe(String urlString, AtomicBoolean cancelled) throws IOException {
@@ -184,92 +155,32 @@ final class ApksDownloader {
 
     private ProbeResult probe(String urlString, AtomicBoolean cancelled,
                               String method) throws IOException {
-        HttpURLConnection conn = null;
-        int maxRedirects = 5;
-        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+        try {
+            HttpURLConnection conn = openFinalConnection(urlString, method, cancelled,
+                    RedirectPolicy.ALLOW_INITIAL_SCHEME);
             try {
-                if (cancelled != null && cancelled.get()) {
-                    throw new DownloadCancelledException();
-                }
-                URL url = new URL(urlString);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-                conn.setRequestMethod(method);
-                conn.connect();
-
-                int status = conn.getResponseCode();
-                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
-                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        status == HttpURLConnection.HTTP_SEE_OTHER ||
-                        status == 307 ||
-                        status == 308) {
-                    String location = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    conn = null;
-                    if (location == null || location.isEmpty()) {
-                        throw new IOException("HTTP " + status + " with no Location header");
-                    }
-                    urlString = new URL(new URL(urlString), location).toString();
-                    continue;
-                }
-
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(describeHttpStatus(status));
-                }
-
                 long totalSize = contentLength(conn);
                 if (totalSize > limits.maxArchiveBytes) {
                     throw new IOException("Download is too large");
                 }
-                return new ProbeResult(urlString, totalSize, normalizedSha256Header(conn));
-            } catch (IOException e) {
-                if (e instanceof DownloadCancelledException) {
-                    throw e;
-                }
-                throw wrapNetworkError(e);
+                return new ProbeResult(conn.getURL().toString(), totalSize,
+                        normalizedSha256Header(conn));
             } finally {
-                if (conn != null) conn.disconnect();
+                conn.disconnect();
             }
+        } catch (IOException e) {
+            if (e instanceof DownloadCancelledException) {
+                throw e;
+            }
+            throw wrapNetworkError(e);
         }
-        throw new IOException("Too many redirects");
     }
 
     String downloadText(String urlString, long maxBytes, AtomicBoolean cancelled) throws IOException {
-        HttpURLConnection conn = null;
-
-        int maxRedirects = 5;
-        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+        try {
+            HttpURLConnection conn = openFinalConnection(urlString, "GET", cancelled,
+                    RedirectPolicy.REQUIRE_HTTPS);
             try {
-                URL url = new URL(urlString);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-                conn.setRequestMethod("GET");
-                conn.connect();
-
-                int status = conn.getResponseCode();
-                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
-                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        status == HttpURLConnection.HTTP_SEE_OTHER ||
-                        status == 307 ||
-                        status == 308) {
-                    String location = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    conn = null;
-                    if (location == null || location.isEmpty()) {
-                        throw new IOException("HTTP " + status + " with no Location header");
-                    }
-                    urlString = new URL(new URL(urlString), location).toString();
-                    continue;
-                }
-
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(describeHttpStatus(status));
-                }
-
                 long total = contentLength(conn);
                 if (total > maxBytes) {
                     throw new IOException("Download is too large");
@@ -281,9 +192,7 @@ final class ApksDownloader {
                 try (InputStream in = conn.getInputStream()) {
                     int count;
                     while ((count = in.read(buffer)) != -1) {
-                        if (cancelled != null && cancelled.get()) {
-                            throw new DownloadCancelledException();
-                        }
+                        throwIfCancelled(cancelled);
                         read += count;
                         if (read > maxBytes) {
                             throw new IOException("Download exceeded size limit");
@@ -292,16 +201,15 @@ final class ApksDownloader {
                     }
                 }
                 return out.toString(StandardCharsets.UTF_8.name());
-            } catch (IOException e) {
-                if (e instanceof DownloadCancelledException) {
-                    throw e;
-                }
-                throw wrapNetworkError(e);
             } finally {
-                if (conn != null) conn.disconnect();
+                conn.disconnect();
             }
+        } catch (IOException e) {
+            if (e instanceof DownloadCancelledException) {
+                throw e;
+            }
+            throw wrapNetworkError(e);
         }
-        throw new IOException("Too many redirects");
     }
 
     static String sha256(File file) throws IOException {
@@ -314,6 +222,77 @@ final class ApksDownloader {
             }
         }
         return toHex(digest.digest());
+    }
+
+    private HttpURLConnection openFinalConnection(String urlString, String method,
+                                                  AtomicBoolean cancelled,
+                                                  RedirectPolicy redirectPolicy)
+            throws IOException {
+        URL initialUrl = new URL(urlString);
+        URL url = initialUrl;
+        enforceUrlPolicy(initialUrl, url, redirectPolicy);
+        for (int redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+            throwIfCancelled(cancelled);
+            HttpURLConnection conn = openConnection(url, method);
+            int status = conn.getResponseCode();
+            if (!isRedirect(status)) {
+                if (status != HttpURLConnection.HTTP_OK) {
+                    String error = describeHttpStatus(status);
+                    conn.disconnect();
+                    throw new IOException(error);
+                }
+                return conn;
+            }
+
+            String location = conn.getHeaderField("Location");
+            conn.disconnect();
+            if (location == null || location.isEmpty()) {
+                throw new IOException("HTTP " + status + " with no Location header");
+            }
+            URL next = new URL(url, location);
+            enforceUrlPolicy(initialUrl, next, redirectPolicy);
+            url = next;
+        }
+        throw new IOException("Too many redirects");
+    }
+
+    private static HttpURLConnection openConnection(URL url, String method) throws IOException {
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setInstanceFollowRedirects(false);
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(30000);
+        conn.setRequestMethod(method);
+        conn.connect();
+        return conn;
+    }
+
+    private static void enforceUrlPolicy(URL initialUrl, URL url,
+                                         RedirectPolicy redirectPolicy) throws IOException {
+        if (redirectPolicy == RedirectPolicy.REQUIRE_HTTPS && !"https".equalsIgnoreCase(url.getProtocol())) {
+            throw new IOException("Download URL must use HTTPS");
+        }
+        if ("https".equalsIgnoreCase(initialUrl.getProtocol())
+                && "http".equalsIgnoreCase(url.getProtocol())) {
+            throw new IOException("Refusing HTTPS to HTTP redirect");
+        }
+        if (!"https".equalsIgnoreCase(url.getProtocol())
+                && !"http".equalsIgnoreCase(url.getProtocol())) {
+            throw new IOException("Unsupported download URL scheme");
+        }
+    }
+
+    private static boolean isRedirect(int status) {
+        return status == HttpURLConnection.HTTP_MOVED_PERM
+                || status == HttpURLConnection.HTTP_MOVED_TEMP
+                || status == HttpURLConnection.HTTP_SEE_OTHER
+                || status == 307
+                || status == 308;
+    }
+
+    private static void throwIfCancelled(AtomicBoolean cancelled) throws DownloadCancelledException {
+        if (cancelled != null && cancelled.get()) {
+            throw new DownloadCancelledException();
+        }
     }
 
     private static long contentLength(HttpURLConnection conn) {
@@ -356,9 +335,7 @@ final class ApksDownloader {
     }
 
     private static void deleteIfExists(File file) throws IOException {
-        if (file.exists() && !file.delete()) {
-            throw new IOException("Could not delete " + file.getName());
-        }
+        FileCleanup.deleteRequired(file);
     }
 
     static final class DownloadCancelledException extends IOException {

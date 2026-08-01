@@ -23,6 +23,9 @@ final class RootInstallBackend implements InstallBackend {
     private static final String TAG = "RootInstallBackend";
     private static final int ROOT_CHECK_TIMEOUT_SEC = 5;
 
+    private final Object sessionLock = new Object();
+    private ShellInstallSession activeSession;
+
     RootInstallBackend() {
     }
 
@@ -97,7 +100,29 @@ final class RootInstallBackend implements InstallBackend {
         ShellExecutor shell = new LibsuShellExecutor();
         ShellInstallSession session = new ShellInstallSession(
                 context, archive, apksFile, shell, callback);
-        session.run();
+        synchronized (sessionLock) {
+            activeSession = session;
+        }
+        try {
+            session.run();
+        } finally {
+            synchronized (sessionLock) {
+                if (activeSession == session) {
+                    activeSession = null;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void cancel(Context context) {
+        ShellInstallSession session;
+        synchronized (sessionLock) {
+            session = activeSession;
+        }
+        if (session != null) {
+            session.cancel();
+        }
     }
 
     /**
@@ -107,27 +132,43 @@ final class RootInstallBackend implements InstallBackend {
 
         @Override
         public ShellResult execute(String... command) throws Exception {
-            Shell.Job job = Shell.cmd(command[0]);
-            for (int i = 1; i < command.length; i++) {
-                job.add(command[i]);
-            }
-            Shell.Result result = job.exec();
-            return new ShellResult(result.getCode(), outToString(result.getOut()), "");
+            java.util.List<String> out = new java.util.ArrayList<>();
+            java.util.List<String> err = new java.util.ArrayList<>();
+            Shell.Result result = Shell.cmd(joinShellCommand(command))
+                    .to(out, err)
+                    .exec();
+            return new ShellResult(result.getCode(), linesToString(out), linesToString(err));
         }
 
         @Override
         public ShellResult executeWithStdin(InputStream stdin, String... command) throws Exception {
-            // libsu supports piping stdin via Shell.Job.add(InputStream).
-            Shell.Job job = Shell.cmd(command[0]);
-            for (int i = 1; i < command.length; i++) {
-                job.add(command[i]);
-            }
-            job.add(stdin);
-            Shell.Result result = job.exec();
-            return new ShellResult(result.getCode(), outToString(result.getOut()), "");
+            // libsu serves job sources to the same shell stdin in order; the APK
+            // stream is consumed by the preceding pm command while it reads '-'.
+            java.util.List<String> out = new java.util.ArrayList<>();
+            java.util.List<String> err = new java.util.ArrayList<>();
+            Shell.Result result = Shell.cmd(joinShellCommand(command))
+                    .add(stdin)
+                    .to(out, err)
+                    .exec();
+            return new ShellResult(result.getCode(), linesToString(out), linesToString(err));
         }
 
-        private static String outToString(java.util.List<String> lines) {
+        private static String joinShellCommand(String... command) {
+            StringBuilder sb = new StringBuilder();
+            for (String arg : command) {
+                if (sb.length() > 0) sb.append(' ');
+                sb.append(shellQuote(arg));
+            }
+            return sb.toString();
+        }
+
+        private static String shellQuote(String arg) {
+            if (arg == null || arg.isEmpty()) return "''";
+            if (arg.matches("[A-Za-z0-9_@%+=:,./-]+")) return arg;
+            return "'" + arg.replace("'", "'\\''") + "'";
+        }
+
+        private static String linesToString(java.util.List<String> lines) {
             if (lines == null || lines.isEmpty()) return "";
             StringBuilder sb = new StringBuilder();
             for (String line : lines) {
