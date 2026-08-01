@@ -55,6 +55,7 @@
     <string name="success_title">Game installed</string>
     <string name="success_message">%1$s was installed successfully.</string>
     <string name="success_launch">Launch game</string>
+    <string name="success_back">Back</string>
     <string name="success_cleanup">Uninstall installer</string>
     <string name="cleanup_title">Uninstall installer?</string>
     <string name="cleanup_message">Uninstall this installer? You can download it again later if needed.</string>

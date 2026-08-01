@@ -52,6 +52,7 @@
     <string name="success_title">游戏安装完成</string>
     <string name="success_message">%1$s 已安装成功。</string>
     <string name="success_launch">启动游戏</string>
+    <string name="success_back">返回</string>
     <string name="success_cleanup">卸载安装器</string>
     <string name="cleanup_title">卸载安装器？</string>
     <string name="cleanup_message">确定要卸载安装器吗？之后如有需要可重新下载。</string>

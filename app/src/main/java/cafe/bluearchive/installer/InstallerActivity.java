@@ -963,6 +963,10 @@ public final class InstallerActivity extends ComponentActivity {
         primaryButton.setText(R.string.success_launch);
         primaryButton.setOnClickListener(v -> launchGame());
         primaryButton.setVisibility(View.VISIBLE);
+
+        secondaryButton.setText(R.string.success_back);
+        secondaryButton.setOnClickListener(v -> finish());
+        secondaryButton.setVisibility(View.VISIBLE);
     }
 
     // ── state: FAILED ──────────────────────────────────────────
