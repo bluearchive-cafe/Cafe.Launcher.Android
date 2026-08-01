@@ -2,13 +2,18 @@
 <resources>
     <string name="app_name">Blue Cafe Installer</string>
     <string name="checking_title">Checking system</string>
-    <string name="checking_message">Checking device and network status…</string>
+    <string name="checking_message">Checking device status…</string>
+    <string name="ready_download_title">Ready to download</string>
+    <string name="ready_download_message">The installer is ready. Download will start only after you continue.</string>
+    <string name="ready_download_button">Download and install</string>
     <string name="already_installed_title">Game installed</string>
     <string name="already_installed_message">%1$s (version %2$s) is already installed on this device.</string>
     <string name="already_installed_launch">Launch game</string>
     <string name="already_installed_reinstall">Reinstall</string>
     <string name="downloading_title">Downloading</string>
     <string name="downloading_preparing">Connecting to the download service…</string>
+    <string name="downloading_using_cache">Checking cached download…</string>
+    <string name="downloading_cache_invalid">Cached package is invalid. Downloading again…</string>
     <string name="downloading_progress">%1$s / %2$s</string>
     <string name="downloading_progress_unknown">Downloaded %1$s</string>
     <string name="downloading_speed">%1$s</string>
@@ -16,12 +21,12 @@
     <string name="network_error_title">Network error</string>
     <string name="network_error_message">Download failed. Check your connection and try again.</string>
     <string name="confirm_install_title">Ready to install</string>
-    <string name="confirm_install_message">About to install %1$s\nSize: %2$s · %3$d split(s)</string>
+    <string name="confirm_install_message">About to install %1$s\nPackage: %2$s\nVersion: %3$s\nSize: %4$s · %5$d split(s)</string>
     <string name="confirm_install_button">Install</string>
     <string name="confirm_cancel">Cancel</string>
     <string name="confirm_update_title">New version found</string>
     <string name="latest_version">Latest</string>
-    <string name="confirm_update_message">%1$s\nInstalled: %2$s (v%3$s)\nNew: v%4$s\nDownload size: %5$s · %6$d split(s)</string>
+    <string name="confirm_update_message">%1$s\nPackage: %2$s\nInstalled: %3$s\nDownloaded: %4$s\nDownload size: %5$s · %6$d split(s)</string>
     <string name="confirm_update_button">Update</string>
     <string name="confirm_update_warning">Updating may keep or clear app data. Back up important data first.</string>
     <string name="confirm_split_list_title">APK splits</string>
@@ -60,7 +65,9 @@
     <string name="notif_channel_name">Install progress</string>
     <string name="notif_channel_desc">Shows game installation progress</string>
     <string name="notif_title">Installing game</string>
-    <string name="notif_message">Installation is in progress. Do not close the app.</string>
+    <string name="notif_download_title">Downloading game</string>
+    <string name="notif_download_message">Download is in progress. Do not close the app.</string>
+    <string name="notif_install_message">Installation is in progress. Do not close the app.</string>
     <string name="failed_title">Installation failed</string>
     <string name="failed_message">Could not complete installation.</string>
     <string name="failed_retry">Retry</string>
@@ -154,6 +161,7 @@
     <string name="settings_install_mode_shizuku">Shizuku</string>
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">Install mode unavailable</string>
+    <string name="install_mode_fallback_message">%1$s Falling back to system installer.</string>
     <string name="settings_install_mode_unavailable_shizuku">Shizuku is not running or permission has not been granted. Please start Shizuku and grant permission to this app.</string>
     <string name="settings_install_mode_unavailable_root">Root access is not available. Make sure your device is rooted and the superuser app has granted permission.</string>
     <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku permission</string>

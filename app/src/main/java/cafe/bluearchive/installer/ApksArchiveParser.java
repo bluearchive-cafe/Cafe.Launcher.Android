@@ -2,10 +2,11 @@ package cafe.bluearchive.installer;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.PackageManager.NameNotFoundException;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -39,6 +40,7 @@ final class ApksArchiveParser {
         Set<String> displayNames = new HashSet<>();
         long totalBytes = 0;
         boolean hasBaseApk = false;
+        String apkPackageName = null;
         String apkVersionName = null;
         long apkVersionCode = -1;
 
@@ -69,19 +71,14 @@ final class ApksArchiveParser {
                 }
                 if ("base.apk".equals(displayName)) {
                     hasBaseApk = true;
-                    // Extract version info from base.apk via PackageManager
-                    // (uses the ZIP entry path as the archive path).
+                    // Extract package/version info from base.apk via PackageManager.
                     if (pm != null) {
-                        String archivePath = apksFile.getAbsolutePath() + "!/" + entryName;
-                        try {
-                            PackageInfo pi = pm.getPackageArchiveInfo(
-                                    archivePath, 0);
-                            if (pi != null) {
-                                apkVersionName = pi.versionName;
-                                apkVersionCode = pi.versionCode;
-                            }
-                        } catch (Exception ignored) {
-                            // Version info is best-effort; ignore failures.
+                        PackageInfo pi = readPackageArchiveInfo(zip, entry, pm);
+                        if (pi != null) {
+                            apkPackageName = pi.packageName;
+                            apkVersionName = pi.versionName;
+                            apkVersionCode = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P
+                                    ? pi.getLongVersionCode() : pi.versionCode;
                         }
                     }
                 }
@@ -107,6 +104,29 @@ final class ApksArchiveParser {
         }
 
         Collections.sort(splits, (left, right) -> left.displayName.compareTo(right.displayName));
-        return new ApksArchive(splits, totalBytes, apkVersionName, apkVersionCode);
+        return new ApksArchive(splits, totalBytes, apkPackageName, apkVersionName, apkVersionCode);
+    }
+
+    private PackageInfo readPackageArchiveInfo(ZipFile zip, ZipEntry entry,
+                                               PackageManager pm) {
+        File tempBaseApk = null;
+        try {
+            tempBaseApk = File.createTempFile("base-", ".apk");
+            try (InputStream in = zip.getInputStream(entry);
+                 FileOutputStream out = new FileOutputStream(tempBaseApk)) {
+                byte[] buffer = new byte[64 * 1024];
+                int count;
+                while ((count = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, count);
+                }
+            }
+            return pm.getPackageArchiveInfo(tempBaseApk.getAbsolutePath(), 0);
+        } catch (Exception ignored) {
+            return null;
+        } finally {
+            if (tempBaseApk != null) {
+                tempBaseApk.delete();
+            }
+        }
     }
 }

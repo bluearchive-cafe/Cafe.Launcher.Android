@@ -36,12 +36,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -98,10 +93,13 @@ public final class InstallerActivity extends ComponentActivity {
     private static final long MIN_FREE_SPACE_FACTOR = 2;
     private static final int DOWNLOAD_BUFFER_SIZE = 64 * 1024; // 64 KiB
 
+    private static final String APKS_CACHE_FILE_NAME = "latest.apks";
+
     // ── UI state machine ───────────────────────────────────────
 
     private enum UiState {
         CHECKING,
+        READY_TO_DOWNLOAD,
         ALREADY_INSTALLED,
         DOWNLOADING,
         CONFIRM_INSTALL,
@@ -150,7 +148,10 @@ public final class InstallerActivity extends ComponentActivity {
     private ReleaseManifest releaseManifest;
     private long totalInstallBytes;
     private boolean detailExpanded;
+    private boolean downloadProgressDeterminate;
+    private long lastDownloadNotificationAt;
     private String lastFailureDetail;
+    private String installModeFallbackDetail;
     private int selectedNavItemId = R.id.nav_install;
     private boolean destroyed;
 
@@ -198,6 +199,7 @@ public final class InstallerActivity extends ComponentActivity {
             installing = savedInstanceState.getBoolean("installing", false);
             detailExpanded = savedInstanceState.getBoolean("detailExpanded", false);
             lastFailureDetail = savedInstanceState.getString("lastFailureDetail");
+            installModeFallbackDetail = savedInstanceState.getString("installModeFallbackDetail");
             selectedNavItemId = savedInstanceState.getInt("selectedNavItemId", R.id.nav_install);
             currentState = uiStateFromName(savedInstanceState.getString("currentState"));
         }
@@ -248,6 +250,7 @@ public final class InstallerActivity extends ComponentActivity {
         outState.putBoolean("installing", installing);
         outState.putBoolean("detailExpanded", detailExpanded);
         outState.putString("lastFailureDetail", lastFailureDetail);
+        outState.putString("installModeFallbackDetail", installModeFallbackDetail);
         outState.putInt("selectedNavItemId", selectedNavItemId);
         outState.putString("currentState", currentState.name());
     }
@@ -266,7 +269,11 @@ public final class InstallerActivity extends ComponentActivity {
         super.onPause();
         // If installing and user leaves, show persistent notification
         if (installing) {
-            showInstallNotification(progressBar.getProgress(), false);
+            showOperationNotification(
+                    getString(R.string.notif_title),
+                    getString(R.string.notif_install_message),
+                    progressBar.getProgress(),
+                    false);
         }
     }
 
@@ -316,7 +323,8 @@ public final class InstallerActivity extends ComponentActivity {
         }
     }
 
-    private void showInstallNotification(int progress, boolean indeterminate) {
+    private void showOperationNotification(String title, String message,
+                                           int progress, boolean indeterminate) {
         Intent intent = new Intent(this, InstallerActivity.class);
         int flags = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -327,8 +335,8 @@ public final class InstallerActivity extends ComponentActivity {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle(getString(R.string.notif_title))
-                .setContentText(getString(R.string.notif_message))
+                .setContentTitle(title)
+                .setContentText(message)
                 .setOngoing(true)
                 .setContentIntent(pending)
                 .setProgress(100, indeterminate ? 0 : progress, indeterminate);
@@ -575,8 +583,9 @@ public final class InstallerActivity extends ComponentActivity {
     // ── temp file cleanup ──────────────────────────────────────
 
     private void cleanupTempFiles() {
-        if (apksFile != null && apksFile.exists()) {
-            apksFile.delete();
+        File partial = new File(getCacheDir(), APKS_CACHE_FILE_NAME + ".partial");
+        if (partial.exists()) {
+            partial.delete();
         }
     }
 
@@ -616,6 +625,7 @@ public final class InstallerActivity extends ComponentActivity {
 
         switch (state) {
             case CHECKING -> showChecking();
+            case READY_TO_DOWNLOAD -> showReadyToDownload();
             case ALREADY_INSTALLED -> showAlreadyInstalled();
             case DOWNLOADING -> showDownloading();
             case CONFIRM_INSTALL -> showConfirmInstall();
@@ -644,6 +654,21 @@ public final class InstallerActivity extends ComponentActivity {
         indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
     }
 
+    // ── state: READY_TO_DOWNLOAD ────────────────────────────────
+
+    private void showReadyToDownload() {
+        titleText.setText(R.string.ready_download_title);
+        messageText.setText(R.string.ready_download_message);
+        primaryButton.setText(R.string.ready_download_button);
+        primaryButton.setOnClickListener(v -> startDownload());
+        primaryButton.setVisibility(View.VISIBLE);
+        primaryButton.setContentDescription(getString(R.string.ready_download_button));
+
+        secondaryButton.setText(R.string.close);
+        secondaryButton.setOnClickListener(v -> finishAndRemoveTask());
+        secondaryButton.setVisibility(View.VISIBLE);
+    }
+
     // ── state: ALREADY_INSTALLED ───────────────────────────────
 
     private void showAlreadyInstalled() {
@@ -667,12 +692,19 @@ public final class InstallerActivity extends ComponentActivity {
     private void showDownloading() {
         titleText.setText(R.string.downloading_title);
         messageText.setText(R.string.downloading_preparing);
+        downloadProgressDeterminate = false;
+        lastDownloadNotificationAt = 0;
         indeterminateBar.setVisibility(View.VISIBLE);
         indeterminateBar.setAlpha(1f);
         progressBar.setVisibility(View.GONE);
         progressBar.setProgress(0);
         progressBar.setIndeterminate(false);
         progressBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+        showOperationNotification(
+                getString(R.string.notif_download_title),
+                getString(R.string.notif_download_message),
+                0,
+                true);
     }
 
     // ── state: NETWORK_ERROR ───────────────────────────────────
@@ -719,7 +751,8 @@ public final class InstallerActivity extends ComponentActivity {
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         titleText.setText(R.string.confirm_install_title);
         messageText.setText(getString(R.string.confirm_install_message,
-                getAppLabel(), formatBytes(totalInstallBytes), apksArchive.splitCount()));
+                getAppLabel(), downloadedPackageName(), downloadedVersionLabel(),
+                formatBytes(totalInstallBytes), apksArchive.splitCount()));
 
         String detail = buildSplitListDetail(apksArchive);
         if (detail != null) {
@@ -741,14 +774,12 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void showConfirmUpdate() {
         String oldVer = existingPackage != null ? existingPackage.versionName : "?";
-        String newVersionName = apksArchive.versionName();
-        String newVer = newVersionName != null ? newVersionName
-                : getString(R.string.latest_version);
+        String newVer = downloadedVersionLabel();
         messageText.setGravity(Gravity.START);
         messageText.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
         titleText.setText(R.string.confirm_update_title);
         messageText.setText(getString(R.string.confirm_update_message,
-                getAppLabel(), existingPackage != null ? existingPackage.packageName : "?",
+                getAppLabel(), downloadedPackageName(),
                 oldVer, newVer,
                 formatBytes(totalInstallBytes), apksArchive.splitCount()));
 
@@ -819,8 +850,16 @@ public final class InstallerActivity extends ComponentActivity {
         indeterminateBar.setVisibility(View.VISIBLE);
         indeterminateBar.setAlpha(1f);
         indeterminateBar.setContentDescription(getString(R.string.cd_progress_indeterminate));
+        if (installModeFallbackDetail != null && !installModeFallbackDetail.isEmpty()) {
+            supportingText.setText(installModeFallbackDetail);
+            supportingText.setVisibility(View.VISIBLE);
+        }
         // Show indeterminate notification initially
-        showInstallNotification(0, true);
+        showOperationNotification(
+                getString(R.string.notif_title),
+                getString(R.string.notif_install_message),
+                0,
+                true);
     }
 
     // ── state: CONFIRM_SYSTEM ──────────────────────────────────
@@ -935,7 +974,7 @@ public final class InstallerActivity extends ComponentActivity {
                     if (existingPackage != null) {
                         setUiState(UiState.ALREADY_INSTALLED);
                     } else {
-                        startDownload();
+                        setUiState(UiState.READY_TO_DOWNLOAD);
                     }
                 });
             } catch (Exception e) {
@@ -959,26 +998,60 @@ public final class InstallerActivity extends ComponentActivity {
                     throw new IOException(getString(R.string.error_no_network));
                 }
 
-                String apksUrl;
+                String apksUrl = APKS_DOWNLOAD_URL;
                 long expectedSize = -1;
                 String expectedSha256 = null;
 
-                if (RELEASE_MANIFEST_PUBLIC_KEY.isEmpty()) {
-                    // No signed-manifest public key is configured — download the
-                    // APKS directly from the download URL without manifest verification.
-                    apksUrl = APKS_DOWNLOAD_URL;
-                } else {
-                    // Signed manifest verification enabled.
-                    ReleaseManifest manifest = fetchAndVerifyReleaseManifest();
-                    releaseManifest = manifest;
-                    apksUrl = manifest.apksUrl;
-                    expectedSize = manifest.apksSize;
-                    expectedSha256 = manifest.apksSha256;
-                }
-
-                outputFile = new File(getCacheDir(), "latest.apks");
                 ApksDownloader downloader = new ApksDownloader(
                         DownloadLimits.defaults(), DOWNLOAD_BUFFER_SIZE, PROGRESS_UPDATE_INTERVAL_MS);
+
+                if (!RELEASE_MANIFEST_PUBLIC_KEY.isEmpty()) {
+                    try {
+                        ReleaseManifest manifest = fetchAndVerifyReleaseManifest(downloader);
+                        releaseManifest = manifest;
+                        apksUrl = manifest.apksUrl;
+                        expectedSize = manifest.apksSize;
+                        expectedSha256 = manifest.apksSha256;
+                    } catch (Exception manifestError) {
+                        Log.w(TAG, "Release manifest unavailable; falling back to download headers", manifestError);
+                    }
+                }
+
+                if (expectedSize < 0 || expectedSha256 == null) {
+                    try {
+                        ApksDownloader.ProbeResult probe = downloader.probe(apksUrl, operationCancelled);
+                        if (expectedSize < 0) {
+                            expectedSize = probe.contentLength;
+                        }
+                        if (expectedSha256 == null) {
+                            expectedSha256 = probe.headerSha256;
+                        }
+                    } catch (Exception probeError) {
+                        Log.w(TAG, "Download header probe failed; cache validation will parse only", probeError);
+                    }
+                }
+
+                outputFile = new File(getCacheDir(), APKS_CACHE_FILE_NAME);
+                ApksArchive cachedArchive = tryUseCachedApks(outputFile, expectedSize, expectedSha256);
+                if (cachedArchive != null) {
+                    apksFile = outputFile;
+                    apksArchive = cachedArchive;
+                    totalInstallBytes = apksArchive.totalBytes();
+                    long free = getFreeSpace();
+                    if (free < totalInstallBytes * MIN_FREE_SPACE_FACTOR) {
+                        postToUi(() -> setUiState(UiState.STORAGE_LOW));
+                        return;
+                    }
+                    postToUi(() -> {
+                        if (existingPackage != null) {
+                            setUiState(UiState.CONFIRM_UPDATE);
+                        } else {
+                            setUiState(UiState.CONFIRM_INSTALL);
+                        }
+                    });
+                    return;
+                }
+
                 ApksDownloader.Result result = downloader.download(
                         apksUrl, outputFile, operationCancelled, this::postDownloadProgress);
 
@@ -1010,6 +1083,13 @@ public final class InstallerActivity extends ComponentActivity {
                 });
 
             } catch (Exception e) {
+                if (e instanceof ApksDownloader.DownloadCancelledException) {
+                    Log.i(TAG, "Download cancelled");
+                    if (outputFile != null) outputFile.delete();
+                    apksFile = null;
+                    apksArchive = null;
+                    return;
+                }
                 Log.e(TAG, "Download failed", e);
                 lastFailureDetail = e.getMessage();
                 if (outputFile != null) outputFile.delete();
@@ -1022,161 +1102,37 @@ public final class InstallerActivity extends ComponentActivity {
         }).start();
     }
 
-    private ReleaseManifest fetchAndVerifyReleaseManifest() throws Exception {
-        String manifestJson = downloadText(APKS_MANIFEST_URL, DownloadLimits.defaults().maxArchiveBytes);
+    private ApksArchive tryUseCachedApks(File cacheFile, long expectedSize,
+                                         String expectedSha256) {
+        if (!cacheFile.exists() || cacheFile.length() <= 0) {
+            return null;
+        }
+        postToUi(() -> messageText.setText(R.string.downloading_using_cache));
+        try {
+            if (expectedSize >= 0 && cacheFile.length() != expectedSize) {
+                throw new IOException(getString(R.string.error_manifest_size_mismatch));
+            }
+            if (expectedSha256 != null && !expectedSha256.equals(ApksDownloader.sha256(cacheFile))) {
+                throw new IOException(getString(R.string.error_manifest_hash_mismatch));
+            }
+            return new ApksArchiveParser(DownloadLimits.defaults())
+                    .parse(cacheFile, getPackageManager());
+        } catch (Exception e) {
+            Log.w(TAG, "Cached APKS is invalid", e);
+            postToUi(() -> messageText.setText(R.string.downloading_cache_invalid));
+            if (cacheFile.exists()) {
+                cacheFile.delete();
+            }
+            return null;
+        }
+    }
+
+    private ReleaseManifest fetchAndVerifyReleaseManifest(ApksDownloader downloader) throws Exception {
+        String manifestJson = downloader.downloadText(
+                APKS_MANIFEST_URL, DownloadLimits.defaults().maxArchiveBytes, operationCancelled);
         ReleaseManifestVerifier verifier = new ReleaseManifestVerifier(
                 GAME_PACKAGE_NAME, RELEASE_MANIFEST_PUBLIC_KEY);
         return verifier.verify(manifestJson);
-    }
-
-    private String downloadText(String urlString, long maxBytes) throws IOException {
-        // Follow redirects manually because Android's built-in
-        //HttpURLConnection.getInstanceFollowRedirects() refuses to follow
-        // HTTPS → HTTP downgrades, which many CDNs use for content delivery.
-        HttpURLConnection conn = null;
-        int maxRedirects = 5;
-        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
-            try {
-                URL url = new URL(urlString);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-                conn.setRequestMethod("GET");
-                conn.connect();
-
-                int status = conn.getResponseCode();
-                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
-                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        status == HttpURLConnection.HTTP_SEE_OTHER ||
-                        status == 307 /* TEMPORARY_REDIRECT */ ||
-                        status == 308 /* PERMANENT_REDIRECT */) {
-                    String location = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    if (location == null || location.isEmpty()) {
-                        throw new IOException("HTTP " + status + " with no Location header");
-                    }
-                    // Resolve relative URLs.
-                    urlString = new URL(new URL(urlString), location).toString();
-                    continue;
-                }
-
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(describeHttpStatus(status));
-                }
-
-                long total = contentLength(conn);
-                if (total > maxBytes) {
-                    throw new IOException(getString(R.string.error_manifest_too_large));
-                }
-                byte[] buffer = new byte[16 * 1024];
-                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-                try (InputStream in = conn.getInputStream()) {
-                    int count;
-                    long read = 0;
-                    while ((count = in.read(buffer)) != -1) {
-                        read += count;
-                        if (read > maxBytes) {
-                            throw new IOException(getString(R.string.error_manifest_too_large));
-                        }
-                        out.write(buffer, 0, count);
-                    }
-                }
-                return out.toString(StandardCharsets.UTF_8.name());
-            } catch (java.net.SocketTimeoutException e) {
-                throw new IOException(getString(R.string.error_connection_timeout), e);
-            } catch (java.net.UnknownHostException e) {
-                throw new IOException(getString(R.string.error_dns_failure, e.getMessage()), e);
-            } catch (javax.net.ssl.SSLException e) {
-                throw new IOException(getString(R.string.error_tls_failure, e.getMessage()), e);
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        }
-        throw new IOException("Too many redirects");
-    }
-
-    private static long contentLength(HttpURLConnection conn) {
-        String value = conn.getHeaderField("Content-Length");
-        if (value == null) return -1;
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException ignored) {
-            return -1;
-        }
-    }
-
-    private void downloadFile(String urlString, File dest) throws IOException {
-        // Follow redirects manually (same reason as downloadText).
-        HttpURLConnection conn = null;
-        int maxRedirects = 5;
-        for (int redirect = 0; redirect <= maxRedirects; redirect++) {
-            try {
-                URL url = new URL(urlString);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setInstanceFollowRedirects(false);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(30000);
-                conn.setRequestMethod("GET");
-                conn.connect();
-
-                int status = conn.getResponseCode();
-                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
-                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        status == HttpURLConnection.HTTP_SEE_OTHER ||
-                        status == 307 || status == 308) {
-                    String location = conn.getHeaderField("Location");
-                    conn.disconnect();
-                    conn = null;
-                    if (location == null || location.isEmpty()) {
-                        throw new IOException("HTTP " + status + " with no Location header");
-                    }
-                    urlString = new URL(new URL(urlString), location).toString();
-                    continue;
-                }
-
-                if (status != HttpURLConnection.HTTP_OK) {
-                    throw new IOException(describeHttpStatus(status));
-                }
-
-                long totalSize = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-                        ? conn.getContentLengthLong() : conn.getContentLength();
-                long downloaded = 0;
-                long startTime = System.currentTimeMillis();
-                long lastUiUpdate = 0;
-
-                byte[] buffer = new byte[DOWNLOAD_BUFFER_SIZE];
-
-                if (dest.exists()) dest.delete();
-
-                try (InputStream in = conn.getInputStream();
-                     FileOutputStream out = new FileOutputStream(dest)) {
-
-                    int count;
-                    while ((count = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, count);
-                        downloaded += count;
-
-                        long now = System.currentTimeMillis();
-                        if (now - lastUiUpdate >= PROGRESS_UPDATE_INTERVAL_MS) {
-                            lastUiUpdate = now;
-                            long elapsed = now - startTime;
-                            long bps = elapsed > 0 ? downloaded * 1000 / elapsed : 0;
-                            postDownloadProgress(downloaded, totalSize, bps, elapsed);
-                        }
-                    }
-                }
-
-                long elapsed = System.currentTimeMillis() - startTime;
-                long bps = elapsed > 0 ? downloaded * 1000 / elapsed : 0;
-                postDownloadProgress(downloaded, totalSize, bps, elapsed);
-                return;
-
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        }
-        throw new IOException("Too many redirects");
     }
 
     private void postDownloadProgress(long downloaded, long total,
@@ -1194,7 +1150,8 @@ public final class InstallerActivity extends ComponentActivity {
             if (currentState != UiState.DOWNLOADING) return;
 
             // Crossfade from indeterminate to determinate only when the server reports a total size.
-            if (total > 0 && indeterminateBar.getVisibility() == View.VISIBLE && downloaded > 0) {
+            if (total > 0 && !downloadProgressDeterminate && downloaded > 0) {
+                downloadProgressDeterminate = true;
                 crossfadeProgress(indeterminateBar, progressBar);
             }
 
@@ -1212,6 +1169,16 @@ public final class InstallerActivity extends ComponentActivity {
             if (!etaText.isEmpty()) {
                 etaLabel.setText(etaText);
                 etaLabel.setVisibility(View.VISIBLE);
+            }
+
+            long now = System.currentTimeMillis();
+            if (now - lastDownloadNotificationAt >= 1000 || (total > 0 && downloaded >= total)) {
+                lastDownloadNotificationAt = now;
+                showOperationNotification(
+                        getString(R.string.notif_download_title),
+                        sizeText,
+                        pct,
+                        total <= 0);
             }
         });
     }
@@ -1301,11 +1268,19 @@ public final class InstallerActivity extends ComponentActivity {
             setUiState(UiState.FAILED);
             return;
         }
+        InstallMode mode = InstallerPreferences.installMode(this);
+        final InstallBackend requestedBackend = InstallBackendFactory.create(this, mode);
+        final InstallBackend backend = InstallBackendFactory.createOrFallback(this, mode);
+        if (requestedBackend != null && backend.mode() != requestedBackend.mode()) {
+            installModeFallbackDetail = getString(
+                    R.string.install_mode_fallback_message,
+                    requestedBackend.unavailableMessage(this));
+        } else {
+            installModeFallbackDetail = null;
+        }
+
         installing = true;
         setUiState(UiState.INSTALLING);
-
-        InstallMode mode = InstallerPreferences.installMode(this);
-        final InstallBackend backend = InstallBackendFactory.createOrFallback(this, mode);
 
         installStartTime = System.currentTimeMillis();
         new Thread(() -> {
@@ -1412,7 +1387,11 @@ public final class InstallerActivity extends ComponentActivity {
             }
 
             // Update persistent notification
-            showInstallNotification(overallPct, false);
+            showOperationNotification(
+                    getString(R.string.notif_title),
+                    getString(R.string.notif_install_message),
+                    overallPct,
+                    false);
         });
     }
 
@@ -1496,6 +1475,32 @@ public final class InstallerActivity extends ComponentActivity {
     }
 
     // ── formatting utilities ───────────────────────────────────
+
+    private String downloadedPackageName() {
+        if (apksArchive != null && apksArchive.packageName() != null
+                && !apksArchive.packageName().isEmpty()) {
+            return apksArchive.packageName();
+        }
+        return GAME_PACKAGE_NAME;
+    }
+
+    private String downloadedVersionLabel() {
+        if (apksArchive == null) {
+            return getString(R.string.latest_version);
+        }
+        String versionName = apksArchive.versionName();
+        long versionCode = apksArchive.versionCode();
+        if (versionName != null && !versionName.isEmpty() && versionCode >= 0) {
+            return versionName + " (" + versionCode + ")";
+        }
+        if (versionName != null && !versionName.isEmpty()) {
+            return versionName;
+        }
+        if (versionCode >= 0) {
+            return String.valueOf(versionCode);
+        }
+        return getString(R.string.latest_version);
+    }
 
     private String formatBytes(long bytes) {
         return FormatUtils.formatBytes(bytes);

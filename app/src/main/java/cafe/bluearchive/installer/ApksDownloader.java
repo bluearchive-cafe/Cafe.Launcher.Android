@@ -1,5 +1,6 @@
 package cafe.bluearchive.installer;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -13,6 +14,7 @@ import java.net.UnknownHostException;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.net.ssl.SSLException;
@@ -32,6 +34,18 @@ final class ApksDownloader {
             this.file = file;
             this.bytes = bytes;
             this.sha256 = sha256;
+            this.headerSha256 = headerSha256;
+        }
+    }
+
+    static final class ProbeResult {
+        final String url;
+        final long contentLength;
+        final String headerSha256;
+
+        ProbeResult(String url, long contentLength, String headerSha256) {
+            this.url = url;
+            this.contentLength = contentLength;
             this.headerSha256 = headerSha256;
         }
     }
@@ -146,6 +160,139 @@ final class ApksDownloader {
             } catch (IOException e) {
                 deleteIfExists(partial);
                 // Don't wrap DownloadCancelledException
+                if (e instanceof DownloadCancelledException) {
+                    throw e;
+                }
+                throw wrapNetworkError(e);
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }
+        throw new IOException("Too many redirects");
+    }
+
+    ProbeResult probe(String urlString, AtomicBoolean cancelled) throws IOException {
+        try {
+            return probe(urlString, cancelled, "HEAD");
+        } catch (IOException headError) {
+            if (headError instanceof DownloadCancelledException) {
+                throw headError;
+            }
+            return probe(urlString, cancelled, "GET");
+        }
+    }
+
+    private ProbeResult probe(String urlString, AtomicBoolean cancelled,
+                              String method) throws IOException {
+        HttpURLConnection conn = null;
+        int maxRedirects = 5;
+        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+            try {
+                if (cancelled != null && cancelled.get()) {
+                    throw new DownloadCancelledException();
+                }
+                URL url = new URL(urlString);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(false);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                conn.setRequestMethod(method);
+                conn.connect();
+
+                int status = conn.getResponseCode();
+                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
+                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                        status == HttpURLConnection.HTTP_SEE_OTHER ||
+                        status == 307 ||
+                        status == 308) {
+                    String location = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    conn = null;
+                    if (location == null || location.isEmpty()) {
+                        throw new IOException("HTTP " + status + " with no Location header");
+                    }
+                    urlString = new URL(new URL(urlString), location).toString();
+                    continue;
+                }
+
+                if (status != HttpURLConnection.HTTP_OK) {
+                    throw new IOException(describeHttpStatus(status));
+                }
+
+                long totalSize = contentLength(conn);
+                if (totalSize > limits.maxArchiveBytes) {
+                    throw new IOException("Download is too large");
+                }
+                return new ProbeResult(urlString, totalSize, normalizedSha256Header(conn));
+            } catch (IOException e) {
+                if (e instanceof DownloadCancelledException) {
+                    throw e;
+                }
+                throw wrapNetworkError(e);
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }
+        throw new IOException("Too many redirects");
+    }
+
+    String downloadText(String urlString, long maxBytes, AtomicBoolean cancelled) throws IOException {
+        HttpURLConnection conn = null;
+
+        int maxRedirects = 5;
+        for (int redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+            try {
+                URL url = new URL(urlString);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(false);
+                conn.setConnectTimeout(15000);
+                conn.setReadTimeout(30000);
+                conn.setRequestMethod("GET");
+                conn.connect();
+
+                int status = conn.getResponseCode();
+                if (status == HttpURLConnection.HTTP_MOVED_PERM ||
+                        status == HttpURLConnection.HTTP_MOVED_TEMP ||
+                        status == HttpURLConnection.HTTP_SEE_OTHER ||
+                        status == 307 ||
+                        status == 308) {
+                    String location = conn.getHeaderField("Location");
+                    conn.disconnect();
+                    conn = null;
+                    if (location == null || location.isEmpty()) {
+                        throw new IOException("HTTP " + status + " with no Location header");
+                    }
+                    urlString = new URL(new URL(urlString), location).toString();
+                    continue;
+                }
+
+                if (status != HttpURLConnection.HTTP_OK) {
+                    throw new IOException(describeHttpStatus(status));
+                }
+
+                long total = contentLength(conn);
+                if (total > maxBytes) {
+                    throw new IOException("Download is too large");
+                }
+
+                byte[] buffer = new byte[Math.min(bufferSize, 16 * 1024)];
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                long read = 0;
+                try (InputStream in = conn.getInputStream()) {
+                    int count;
+                    while ((count = in.read(buffer)) != -1) {
+                        if (cancelled != null && cancelled.get()) {
+                            throw new DownloadCancelledException();
+                        }
+                        read += count;
+                        if (read > maxBytes) {
+                            throw new IOException("Download exceeded size limit");
+                        }
+                        out.write(buffer, 0, count);
+                    }
+                }
+                return out.toString(StandardCharsets.UTF_8.name());
+            } catch (IOException e) {
                 if (e instanceof DownloadCancelledException) {
                     throw e;
                 }

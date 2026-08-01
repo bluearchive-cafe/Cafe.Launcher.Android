@@ -2,13 +2,18 @@
 <resources>
     <string name="app_name">蔚藍咖啡廳安裝器</string>
     <string name="checking_title">正在檢查系統</string>
-    <string name="checking_message">正在偵測裝置和網路狀態…</string>
+    <string name="checking_message">正在偵測裝置狀態…</string>
+    <string name="ready_download_title">準備下載</string>
+    <string name="ready_download_message">安裝器已準備就緒。繼續後才會開始下載。</string>
+    <string name="ready_download_button">下載並安裝</string>
     <string name="already_installed_title">遊戲已安裝</string>
     <string name="already_installed_message">%1$s（版本 %2$s）已安裝在此裝置上。</string>
     <string name="already_installed_launch">啟動遊戲</string>
     <string name="already_installed_reinstall">重新安裝</string>
     <string name="downloading_title">正在下載</string>
     <string name="downloading_preparing">正在連線到下載服務…</string>
+    <string name="downloading_using_cache">正在檢查本機快取…</string>
+    <string name="downloading_cache_invalid">本機快取無效，正在重新下載…</string>
     <string name="downloading_progress">%1$s / %2$s</string>
     <string name="downloading_progress_unknown">已下載 %1$s</string>
     <string name="downloading_speed">%1$s</string>
@@ -16,12 +21,12 @@
     <string name="network_error_title">網路錯誤</string>
     <string name="network_error_message">下載失敗，請檢查網路連線後重試。</string>
     <string name="confirm_install_title">準備安裝</string>
-    <string name="confirm_install_message">即將安裝 %1$s\n大小：%2$s · %3$d 個分片</string>
+    <string name="confirm_install_message">即將安裝 %1$s\n套件名稱：%2$s\n版本：%3$s\n大小：%4$s · %5$d 個分片</string>
     <string name="confirm_install_button">安裝</string>
     <string name="confirm_cancel">取消</string>
     <string name="confirm_update_title">發現新版本</string>
     <string name="latest_version">最新版</string>
-    <string name="confirm_update_message">%1$s\n已安裝：%2$s (v%3$s)\n新版本：v%4$s\n下載大小：%5$s · %6$d 個分片</string>
+    <string name="confirm_update_message">%1$s\n套件名稱：%2$s\n已安裝：%3$s\n已下載：%4$s\n下載大小：%5$s · %6$d 個分片</string>
     <string name="confirm_update_button">更新</string>
     <string name="confirm_update_warning">更新可能會保留或清除應用程式資料，請先備份重要資料。</string>
     <string name="confirm_split_list_title">APK 分片列表</string>
@@ -57,7 +62,9 @@
     <string name="notif_channel_name">安裝進度</string>
     <string name="notif_channel_desc">顯示遊戲安裝進度</string>
     <string name="notif_title">正在安裝遊戲</string>
-    <string name="notif_message">安裝進行中，請勿關閉應用程式</string>
+    <string name="notif_download_title">正在下載遊戲</string>
+    <string name="notif_download_message">下載進行中，請勿關閉應用程式</string>
+    <string name="notif_install_message">安裝進行中，請勿關閉應用程式</string>
     <string name="failed_title">安裝失敗</string>
     <string name="failed_message">無法完成安裝。</string>
     <string name="failed_retry">重試</string>
@@ -152,6 +159,7 @@
     <string name="settings_install_mode_shizuku">Shizuku</string>
     <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安裝模式不可用</string>
+    <string name="install_mode_fallback_message">%1$s 將改用系統安裝器。</string>
     <string name="settings_install_mode_unavailable_shizuku">Shizuku 未執行或未授權。請啟動 Shizuku 並授權此應用程式。</string>
     <string name="settings_install_mode_unavailable_root">Root 權限不可用。請確保裝置已 Root 且超級使用者應用程式已授權。</string>
     <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 權限</string>
