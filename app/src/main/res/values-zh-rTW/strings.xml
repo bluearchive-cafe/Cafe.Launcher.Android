@@ -115,14 +115,9 @@
     <string name="help_note">如果安裝失敗，請先確認網路連線、儲存空間、裝置架構和已安裝版本簽章。失敗頁的「查看詳情」會顯示系統返回的具體原因。</string>
     <string name="settings_title">設定與關於</string>
     <string name="settings_group_interface">介面</string>
-    <string name="settings_group_install_target">安裝目標</string>
     <string name="settings_group_about">關於</string>
     <string name="settings_theme_label">主題</string>
     <string name="settings_language_label">語言</string>
-    <string name="settings_target_package_label">目標遊戲套件名稱</string>
-    <string name="settings_download_url_label">下載端點</string>
-    <string name="settings_installer_version_label">安裝器版本</string>
-    <string name="settings_version_format">%1$s（%2$d）</string>
     <string-array name="theme_mode_options">
         <item>跟隨系統</item>
         <item>總是開啟</item>

@@ -136,9 +136,6 @@ public final class InstallerActivity extends ComponentActivity {
     private View installContent;
     private View helpContent;
     private View settingsContent;
-    private View settingsPackageName;
-    private View settingsDownloadUrl;
-    private TextView settingsInstallerVersion;
     private View settingsThemeRow;
     private View settingsLanguageRow;
     private View settingsInstallModeRow;
@@ -441,9 +438,6 @@ public final class InstallerActivity extends ComponentActivity {
         topAppBar = findViewById(R.id.topAppBar);
         bottomNavigation = findViewById(R.id.bottomNavigation);
         navigationView = findViewById(R.id.navigationView);
-        settingsPackageName = findViewById(R.id.settingsPackageName);
-        settingsDownloadUrl = findViewById(R.id.settingsDownloadUrl);
-        settingsInstallerVersion = findViewById(R.id.settingsInstallerVersion);
         settingsThemeRow = findViewById(R.id.settingsThemeRow);
         settingsLanguageRow = findViewById(R.id.settingsLanguageRow);
         settingsInstallModeRow = findViewById(R.id.settingsInstallModeRow);
@@ -518,15 +512,8 @@ public final class InstallerActivity extends ComponentActivity {
                 settingsThemeRow,
                 settingsLanguageRow,
                 settingsInstallModeRow,
-                settingsAboutRow,
-                (TextView) settingsPackageName,
-                (TextView) settingsDownloadUrl,
-                settingsInstallerVersion);
-        settingsController.bind(
-                GAME_PACKAGE_NAME,
-                APKS_DOWNLOAD_URL,
-                BuildConfig.VERSION_NAME,
-                BuildConfig.VERSION_CODE);
+                settingsAboutRow);
+        settingsController.bind();
     }
 
     private void bindNavigation() {

@@ -58,71 +58,6 @@
             style="@style/OpenJbdSectionTitle"
             android:paddingStart="@dimen/space_16"
             android:paddingEnd="@dimen/space_16"
-            android:text="@string/settings_group_install_target" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/space_6"
-            android:divider="@drawable/divider_card_stroke"
-            android:orientation="vertical"
-            android:showDividers="middle">
-
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_target_package_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/settingsPackageName"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="monospace"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle"
-                        android:textIsSelectable="true" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_download_url_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/settingsDownloadUrl"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="monospace"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle"
-                        android:textIsSelectable="true" />
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <TextView
-            style="@style/OpenJbdSectionTitle"
-            android:paddingStart="@dimen/space_16"
-            android:paddingEnd="@dimen/space_16"
             android:text="@string/settings_group_about" />
 
         <LinearLayout
@@ -131,29 +66,6 @@
             android:divider="@drawable/divider_card_stroke"
             android:orientation="vertical"
             android:showDividers="middle">
-
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_installer_version_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/settingsInstallerVersion"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
-                </LinearLayout>
-            </LinearLayout>
 
             <include
                 android:id="@+id/settingsAboutRow"

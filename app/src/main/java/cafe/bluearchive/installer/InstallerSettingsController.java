@@ -28,9 +28,6 @@ final class InstallerSettingsController {
     private final View languageRow;
     private final View installModeRow;
     private final View aboutRow;
-    private final TextView packageNameView;
-    private final TextView downloadUrlView;
-    private final TextView installerVersionView;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // Holds state for a pending Shizuku permission request.
@@ -43,32 +40,15 @@ final class InstallerSettingsController {
                                 View themeRow,
                                 View languageRow,
                                 View installModeRow,
-                                View aboutRow,
-                                TextView packageNameView,
-                                TextView downloadUrlView,
-                                TextView installerVersionView) {
+                                View aboutRow) {
         this.activity = activity;
         this.themeRow = themeRow;
         this.languageRow = languageRow;
         this.installModeRow = installModeRow;
         this.aboutRow = aboutRow;
-        this.packageNameView = packageNameView;
-        this.downloadUrlView = downloadUrlView;
-        this.installerVersionView = installerVersionView;
     }
 
-    void bind(String packageName, String downloadUrl, String versionName, int versionCode) {
-        if (packageNameView != null) {
-            packageNameView.setText(packageName);
-        }
-        if (downloadUrlView != null) {
-            downloadUrlView.setText(downloadUrl);
-        }
-        if (installerVersionView != null) {
-            installerVersionView.setText(activity.getString(
-                    R.string.settings_version_format, versionName, versionCode));
-        }
-
+    void bind() {
         bindThemeRow();
         bindLanguageRow();
         bindInstallModeRow();
