@@ -86,6 +86,7 @@ final class SystemInstallBackend implements InstallBackend {
             long totalSize = archive.totalBytes();
 
             for (int i = 0; i < archive.splitCount(); i++) {
+                throwIfCancelled();
                 ApksArchive.Split split = archive.splitAt(i);
                 String name = split.displayName;
                 String entryName = split.entryName;
@@ -102,6 +103,7 @@ final class SystemInstallBackend implements InstallBackend {
 
                     int count;
                     while ((count = input.read(buffer)) != -1) {
+                        throwIfCancelled();
                         output.write(buffer, 0, count);
                         splitWritten += count;
                         totalWritten += count;
@@ -220,6 +222,12 @@ final class SystemInstallBackend implements InstallBackend {
         synchronized (sessionLock) {
             activeSession = null;
             activeSessionId = -1;
+        }
+    }
+
+    private static void throwIfCancelled() throws IOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new IOException("Install cancelled");
         }
     }
 

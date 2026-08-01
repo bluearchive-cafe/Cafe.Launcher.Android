@@ -313,12 +313,14 @@ public final class InstallerActivity extends ComponentActivity {
         if (resourcePanelController != null) {
             resourcePanelController.destroy();
         }
-        if (!installing) {
-            InstallBackendFactory.destroy();
-            cleanupTempFiles();
+        if (installing) {
+            cancelActiveInstall();
+            installing = false;
         }
+        InstallBackendFactory.destroy();
+        cleanupTempFiles();
         // Remove notification when installation is no longer active
-        if (!installing && notificationManager != null) {
+        if (notificationManager != null) {
             notificationManager.cancel(NOTIFY_INSTALL);
         }
     }
@@ -410,6 +412,10 @@ public final class InstallerActivity extends ComponentActivity {
         if (thread != null) {
             thread.interrupt();
         }
+    }
+
+    private boolean installCancelled() {
+        return operationCancelled.get() || Thread.currentThread().isInterrupted() || destroyed;
     }
 
     // ── crossfade helpers ────────────────────────────────────────
@@ -1074,6 +1080,7 @@ public final class InstallerActivity extends ComponentActivity {
 
     private void startDownload() {
         operationCancelled.set(false);
+        releaseManifest = null;
         setUiState(UiState.DOWNLOADING);
 
         new Thread(() -> {
@@ -1141,7 +1148,7 @@ public final class InstallerActivity extends ComponentActivity {
                 }
                 Log.e(TAG, "Download failed", e);
                 lastFailureDetail = e.getMessage();
-                if (outputFile != null) outputFile.delete();
+                if (outputFile != null) FileCleanup.deleteBestEffort(TAG, outputFile);
                 apksFile = null;
                 apksArchive = null;
                 UiState failureState = e instanceof ZipException
@@ -1365,12 +1372,14 @@ public final class InstallerActivity extends ComponentActivity {
 
                     @Override
                     public void onSuccess() {
+                        if (installCancelled()) return;
                         clearInstallCallbackToken();
                         postToUi(() -> setUiState(UiState.SUCCESS));
                     }
 
                     @Override
                     public void onFailure(String detail) {
+                        if (installCancelled()) return;
                         clearInstallCallbackToken();
                         postToUi(() -> {
                             lastFailureDetail = detail;
@@ -1380,6 +1389,7 @@ public final class InstallerActivity extends ComponentActivity {
 
                     @Override
                     public void onConfirmSystem(Intent confirmationIntent) {
+                        if (installCancelled()) return;
                         postToUi(() -> {
                             setUiState(UiState.CONFIRM_SYSTEM);
                             if (confirmationIntent != null
@@ -1394,6 +1404,10 @@ public final class InstallerActivity extends ComponentActivity {
                     }
                 });
             } catch (Exception e) {
+                if (installCancelled()) {
+                    Log.i(TAG, "Install cancelled");
+                    return;
+                }
                 Log.e(TAG, "Install failed", e);
                 String detail = e.getMessage() != null ? e.getMessage()
                         : getString(R.string.unknown_error);

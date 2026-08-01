@@ -64,8 +64,8 @@ public final class ShizukuShellService extends IShellService.Stub {
                                      ParcelFileDescriptor stdinPipe) {
         cancelled = false;
         int exitCode = -1;
-        StringBuilder stdOutSb = new StringBuilder();
-        StringBuilder stdErrSb = new StringBuilder();
+        StringBuffer stdOutSb = new StringBuffer();
+        StringBuffer stdErrSb = new StringBuffer();
 
         try {
             Process process = new ProcessBuilder(cmd)
@@ -159,7 +159,7 @@ public final class ShizukuShellService extends IShellService.Stub {
 
     private Thread pipeStdin(ParcelFileDescriptor stdinPipe,
                              OutputStream processIn,
-                             StringBuilder stdErrSb) {
+                             StringBuffer stdErrSb) {
         Thread t = new Thread(() -> {
             try (InputStream pipeIn = new ParcelFileDescriptor.AutoCloseInputStream(stdinPipe);
                  OutputStream out = processIn) {
@@ -180,7 +180,7 @@ public final class ShizukuShellService extends IShellService.Stub {
         return t;
     }
 
-    private Thread drain(InputStream in, StringBuilder sb) {
+    private Thread drain(InputStream in, StringBuffer sb) {
         Thread t = new Thread(() -> {
             byte[] buf = new byte[4096];
             try (in) {

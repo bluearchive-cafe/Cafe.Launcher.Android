@@ -25,7 +25,8 @@ final class ResourcePanelController {
     private final InstallerActivity activity;
     private final View root;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private final ExecutorService executor = Executors.newFixedThreadPool(3);
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService serviceExecutor = Executors.newFixedThreadPool(2);
     private final ResourcePanelUidService uidService;
     private final ResourcePanelService service;
     private final Map<ResourcePanelModels.ResourceCode, ItemViews> itemViews = new EnumMap<>(ResourcePanelModels.ResourceCode.class);
@@ -54,7 +55,7 @@ final class ResourcePanelController {
         this.activity = activity;
         this.root = root;
         uidService = new ResourcePanelUidService(activity);
-        service = new ResourcePanelService(new ResourcePanelApiClient(), executor);
+        service = new ResourcePanelService(new ResourcePanelApiClient(), serviceExecutor);
     }
 
     void bind() {
@@ -93,6 +94,7 @@ final class ResourcePanelController {
         destroyed = true;
         generation++;
         executor.shutdownNow();
+        serviceExecutor.shutdownNow();
     }
 
     private void bindItem(ResourcePanelModels.ResourceCode code, View itemRoot) {

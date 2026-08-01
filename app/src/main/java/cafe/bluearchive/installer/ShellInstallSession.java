@@ -274,7 +274,7 @@ final class ShellInstallSession {
      * install callback at ~256 KiB granularity so the UI updates live during
      * large split writes rather than only after the entire split finishes.
      */
-    private static class ProgressInputStream extends InputStream {
+    private class ProgressInputStream extends InputStream {
         private final InputStream delegate;
         private final long splitSize;
         private final long totalBytesBefore;
@@ -300,6 +300,7 @@ final class ShellInstallSession {
 
         @Override
         public int read() throws IOException {
+            throwIfCancelled();
             int b = delegate.read();
             if (b != -1) record(1);
             return b;
@@ -307,6 +308,7 @@ final class ShellInstallSession {
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
+            throwIfCancelled();
             int n = delegate.read(b, off, len);
             if (n > 0) record(n);
             return n;
