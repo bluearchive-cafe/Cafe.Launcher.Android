@@ -115,6 +115,15 @@ final class ShizukuInstallBackend implements InstallBackend {
         session.run();
     }
 
+    ShellExecutor.ShellResult executeShell(Context context, String... command) throws Exception {
+        if (!isAvailable(context)) {
+            throw new IOException(unavailableMessage(context));
+        }
+        cancelled = false;
+        ensureBound(context);
+        return new UserServiceShellExecutor().execute(command);
+    }
+
     // ── UserService binding ──────────────────────────────────────
 
     private void ensureBound(Context context) throws IOException {

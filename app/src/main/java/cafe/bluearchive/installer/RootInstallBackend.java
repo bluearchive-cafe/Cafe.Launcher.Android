@@ -86,6 +86,10 @@ final class RootInstallBackend implements InstallBackend {
         return "Root access is not available. Make sure your device is rooted and the superuser app has granted permission.";
     }
 
+    ShellExecutor.ShellResult executeShell(String... command) throws Exception {
+        return new LibsuShellExecutor().execute(command);
+    }
+
     @Override
     public void install(Context context, ApksArchive archive, File apksFile,
                         InstallCallback callback) throws Exception {

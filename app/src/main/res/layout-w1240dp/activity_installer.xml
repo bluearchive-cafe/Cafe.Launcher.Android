@@ -43,6 +43,11 @@
             android:visibility="gone" />
 
         <include
+            android:id="@+id/resourcePanelContent"
+            layout="@layout/content_resource_panel"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/settingsContent"
             layout="@layout/content_settings"
             android:visibility="gone" />

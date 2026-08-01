@@ -133,6 +133,7 @@ public final class InstallerActivity extends ComponentActivity {
     private NavigationView navigationView;
     private View installContent;
     private View helpContent;
+    private View resourcePanelContent;
     private View settingsContent;
     private View settingsThemeRow;
     private View settingsLanguageRow;
@@ -166,6 +167,7 @@ public final class InstallerActivity extends ComponentActivity {
 
     // Settings controller (stored so we can call destroy() for listener cleanup)
     private InstallerSettingsController settingsController;
+    private ResourcePanelController resourcePanelController;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private NotificationManager notificationManager;
@@ -292,6 +294,9 @@ public final class InstallerActivity extends ComponentActivity {
         super.onDestroy();
         if (settingsController != null) {
             settingsController.destroy();
+        }
+        if (resourcePanelController != null) {
+            resourcePanelController.destroy();
         }
         InstallBackendFactory.destroy();
         if (!installing) {
@@ -444,6 +449,7 @@ public final class InstallerActivity extends ComponentActivity {
 
         installContent = findViewById(R.id.installContent);
         helpContent = findViewById(R.id.helpContent);
+        resourcePanelContent = findViewById(R.id.resourcePanelContent);
         settingsContent = findViewById(R.id.settingsContent);
         topAppBar = findViewById(R.id.topAppBar);
         bottomNavigation = findViewById(R.id.bottomNavigation);
@@ -455,6 +461,7 @@ public final class InstallerActivity extends ComponentActivity {
         settingsRootStatusRow = findViewById(R.id.settingsRootStatusRow);
         settingsAboutRow = findViewById(R.id.settingsAboutRow);
         bindSettingsContent();
+        bindResourcePanelContent();
         ViewCompat.setAccessibilityHeading(titleText, true);
     }
 
@@ -530,6 +537,11 @@ public final class InstallerActivity extends ComponentActivity {
         settingsController.bind();
     }
 
+    private void bindResourcePanelContent() {
+        resourcePanelController = new ResourcePanelController(this, resourcePanelContent);
+        resourcePanelController.bind();
+    }
+
     private void bindNavigation() {
         if (bottomNavigation != null) {
             bottomNavigation.setOnItemSelectedListener(this::onNavigationItemSelected);
@@ -549,7 +561,7 @@ public final class InstallerActivity extends ComponentActivity {
     }
 
     private void showSection(int itemId, boolean syncNavigation) {
-        if (itemId != R.id.nav_help && itemId != R.id.nav_settings) {
+        if (itemId != R.id.nav_help && itemId != R.id.nav_resource_panel && itemId != R.id.nav_settings) {
             itemId = R.id.nav_install;
         }
         selectedNavItemId = itemId;
@@ -559,6 +571,9 @@ public final class InstallerActivity extends ComponentActivity {
         }
         if (helpContent != null) {
             helpContent.setVisibility(itemId == R.id.nav_help ? View.VISIBLE : View.GONE);
+        }
+        if (resourcePanelContent != null) {
+            resourcePanelContent.setVisibility(itemId == R.id.nav_resource_panel ? View.VISIBLE : View.GONE);
         }
         if (settingsContent != null) {
             settingsContent.setVisibility(itemId == R.id.nav_settings ? View.VISIBLE : View.GONE);
@@ -570,6 +585,9 @@ public final class InstallerActivity extends ComponentActivity {
         if (navigationView != null) {
             navigationView.setCheckedItem(itemId);
         }
+        if (itemId == R.id.nav_resource_panel && resourcePanelController != null) {
+            resourcePanelController.onShown();
+        }
         updateToolbarTitle(itemId);
     }
 
@@ -578,6 +596,8 @@ public final class InstallerActivity extends ComponentActivity {
         int titleResId;
         if (itemId == R.id.nav_help) {
             titleResId = R.string.help_title;
+        } else if (itemId == R.id.nav_resource_panel) {
+            titleResId = R.string.resource_panel_title;
         } else if (itemId == R.id.nav_settings) {
             titleResId = R.string.settings_title;
         } else {

@@ -90,6 +90,14 @@ public final class InstallBackendFactory {
         return shizukuBackend;
     }
 
+    static ShizukuInstallBackend getOrCreateShizukuBackend() {
+        return getShizukuBackend();
+    }
+
+    static RootInstallBackend getOrCreateRootBackend() {
+        return getRootBackend();
+    }
+
     /**
      * Destroys the Shizuku backend (unbinds UserService, removes listeners).
      * Safe to call multiple times. After calling, the Shizuku backend will

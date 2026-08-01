@@ -15,6 +15,8 @@ final class InstallerPreferences {
     static final String PREF_THEME_MODE = "theme_mode";
     static final String PREF_LANGUAGE_MODE = "language_mode";
     static final String PREF_INSTALL_MODE = "install_mode";
+    static final String PREF_RESOURCE_PANEL_UID = "resource_panel_uid";
+    static final String PREF_RESOURCE_PANEL_UID_SOURCE = "resource_panel_uid_source";
 
     static final String THEME_SYSTEM = "system";
     static final String THEME_DARK = "dark";
@@ -28,6 +30,9 @@ final class InstallerPreferences {
     static final String INSTALL_MODE_SYSTEM = "system";
     static final String INSTALL_MODE_SHIZUKU = "shizuku";
     static final String INSTALL_MODE_ROOT = "root";
+
+    static final String RESOURCE_PANEL_UID_SOURCE_AUTO = "auto";
+    static final String RESOURCE_PANEL_UID_SOURCE_CUSTOM = "custom";
 
     private InstallerPreferences() { }
 
@@ -46,6 +51,16 @@ final class InstallerPreferences {
     static InstallMode installMode(Context context) {
         String value = sharedPreferences(context).getString(PREF_INSTALL_MODE, INSTALL_MODE_SYSTEM);
         return installModeFromString(value);
+    }
+
+    static String resourcePanelUid(Context context) {
+        return sharedPreferences(context).getString(PREF_RESOURCE_PANEL_UID, "");
+    }
+
+    static String resourcePanelUidSource(Context context) {
+        return sharedPreferences(context).getString(
+                PREF_RESOURCE_PANEL_UID_SOURCE,
+                RESOURCE_PANEL_UID_SOURCE_AUTO);
     }
 
     static InstallMode installModeFromString(String value) {

@@ -11,6 +11,11 @@
         android:icon="@drawable/ic_nav_help"
         android:title="@string/nav_help" />
     <item
+        android:id="@+id/nav_resource_panel"
+        android:checkable="true"
+        android:icon="@drawable/ic_nav_resource_panel"
+        android:title="@string/nav_resource_panel" />
+    <item
         android:id="@+id/nav_settings"
         android:checkable="true"
         android:icon="@drawable/ic_nav_settings"

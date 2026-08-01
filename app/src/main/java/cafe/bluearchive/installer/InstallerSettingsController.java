@@ -96,7 +96,7 @@ final class InstallerSettingsController {
         icon.setVisibility(View.VISIBLE);
         title.setText(R.string.settings_theme_label);
         updateThemeSubtitle(subtitle);
-        chevron.setVisibility(View.VISIBLE);
+        chevron.setVisibility(View.GONE);
 
         themeRow.setOnClickListener(view -> showThemeMenu());
     }
@@ -126,7 +126,7 @@ final class InstallerSettingsController {
         icon.setVisibility(View.VISIBLE);
         title.setText(R.string.settings_language_label);
         updateLanguageSubtitle(subtitle);
-        chevron.setVisibility(View.VISIBLE);
+        chevron.setVisibility(View.GONE);
 
         languageRow.setOnClickListener(view -> showLanguageMenu());
     }
@@ -158,7 +158,7 @@ final class InstallerSettingsController {
         icon.setVisibility(View.VISIBLE);
         title.setText(R.string.settings_install_mode_label);
         updateInstallModeSubtitle(subtitle);
-        chevron.setVisibility(View.VISIBLE);
+        chevron.setVisibility(View.GONE);
 
         // Binder lifecycle — when Shizuku dies while settings is open, clear
         // any pending permission state so the UI stays consistent.
