@@ -6,6 +6,8 @@ import android.content.res.Configuration;
 import android.os.Build;
 import android.os.LocaleList;
 
+import androidx.appcompat.app.AppCompatDelegate;
+
 import java.util.Locale;
 
 final class InstallerPreferences {
@@ -63,6 +65,25 @@ final class InstallerPreferences {
     /** Writes synchronously so the value is on disk before the caller restarts. */
     static void save(Context context, String key, String value) {
         sharedPreferences(context).edit().putString(key, value).commit();
+        if (PREF_THEME_MODE.equals(key)) {
+            applyGlobalThemeMode(value);
+        }
+    }
+
+    static void applyGlobalThemeMode(Context context) {
+        applyGlobalThemeMode(themeMode(context));
+    }
+
+    static void applyGlobalThemeMode(String themeMode) {
+        int nightMode;
+        if (THEME_DARK.equals(themeMode)) {
+            nightMode = AppCompatDelegate.MODE_NIGHT_YES;
+        } else if (THEME_LIGHT.equals(themeMode)) {
+            nightMode = AppCompatDelegate.MODE_NIGHT_NO;
+        } else {
+            nightMode = AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM;
+        }
+        AppCompatDelegate.setDefaultNightMode(nightMode);
     }
 
     static boolean isStoredValue(Context context, String key, String value) {
