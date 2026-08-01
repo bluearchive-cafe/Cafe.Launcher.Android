@@ -26,73 +26,13 @@
             android:orientation="vertical"
             android:showDividers="middle">
 
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
+            <include
+                android:id="@+id/settingsThemeRow"
+                layout="@layout/row_installer_setting_item" />
 
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_12"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/themeSpinnerLabel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:labelFor="@id/themeSpinner"
-                        android:text="@string/settings_theme_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/themeValueText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
-                </LinearLayout>
-
-                <Spinner
-                    android:id="@+id/themeSpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/touch_target_min"
-                    android:spinnerMode="dropdown" />
-            </LinearLayout>
-
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_12"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/languageSpinnerLabel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:labelFor="@id/languageSpinner"
-                        android:text="@string/settings_language_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/languageValueText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
-                </LinearLayout>
-
-                <Spinner
-                    android:id="@+id/languageSpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/touch_target_min"
-                    android:spinnerMode="dropdown" />
-            </LinearLayout>
+            <include
+                android:id="@+id/settingsLanguageRow"
+                layout="@layout/row_installer_setting_item" />
         </LinearLayout>
 
         <TextView
@@ -109,39 +49,9 @@
             android:orientation="vertical"
             android:showDividers="middle">
 
-            <LinearLayout
-                style="@style/Widget.Installer.SettingRow">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="@dimen/space_12"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/installModeSpinnerLabel"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:labelFor="@id/installModeSpinner"
-                        android:text="@string/settings_install_mode_label"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemTitle" />
-
-                    <TextView
-                        android:id="@+id/installModeValueText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:paddingTop="@dimen/space_2"
-                        android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
-                </LinearLayout>
-
-                <Spinner
-                    android:id="@+id/installModeSpinner"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/touch_target_min"
-                    android:spinnerMode="dropdown" />
-            </LinearLayout>
+            <include
+                android:id="@+id/settingsInstallModeRow"
+                layout="@layout/row_installer_setting_item" />
         </LinearLayout>
 
         <TextView
@@ -244,6 +154,10 @@
                         android:textAppearance="@style/TextAppearance.Installer.ListItemSubtitle" />
                 </LinearLayout>
             </LinearLayout>
+
+            <include
+                android:id="@+id/settingsAboutRow"
+                layout="@layout/row_installer_setting_item" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

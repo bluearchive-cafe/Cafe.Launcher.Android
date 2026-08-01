@@ -146,8 +146,41 @@
         <item>Shizuku</item>
         <item>Root</item>
     </string-array>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_dark">总是开启</string>
+    <string name="settings_theme_light">总是关闭</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_language_zh_hans">简体中文</string>
+    <string name="settings_language_zh_hant">繁體中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_install_mode_system">系统</string>
+    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安装模式不可用</string>
     <string name="settings_install_mode_unavailable_shizuku">Shizuku 未运行或未授权。请启动 Shizuku 并授权此应用。</string>
     <string name="settings_install_mode_unavailable_root">Root 权限不可用。请确保设备已 Root 且超级用户应用已授权。</string>
     <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 权限</string>
+
+    <!-- 关于 -->
+    <string name="about_title">关于</string>
+    <string name="about_description">蔚蓝咖啡厅安装器通过 CDN 下载并安装游戏，支持多种安装后端，包括 Shizuku 和 Root 模式。</string>
+    <string name="about_item_app_version">应用版本</string>
+    <string name="about_item_source_code">源代码</string>
+    <string name="about_item_licenses">开源许可</string>
+    <string name="about_version_unknown">未知</string>
+
+    <!-- 开源许可 -->
+    <string name="licenses_title">开源许可</string>
+    <string name="license_mit">MIT 许可证</string>
+    <string name="license_apache_2">Apache 许可证 2.0</string>
+    <string name="license_item_app">蔚蓝咖啡厅安装器</string>
+    <string name="license_item_material_components">Material Components for Android</string>
+    <string name="license_item_androidx_activity">AndroidX Activity</string>
+    <string name="license_item_shizuku">Shizuku</string>
+    <string name="license_item_libsu">libsu</string>
+
+    <!-- 通用 -->
+    <string name="action_back">返回</string>
+    <string name="setting_about">关于</string>
+    <string name="setting_about_subtitle">应用版本和项目仓库</string>
 </resources>

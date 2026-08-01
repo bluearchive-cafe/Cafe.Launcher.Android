@@ -127,17 +127,10 @@ final class InstallerPreferences {
         String themeMode = themeMode(base);
         String languageMode = languageMode(base);
 
-        boolean hasThemeOverride = THEME_DARK.equals(themeMode) || THEME_LIGHT.equals(themeMode);
-        boolean hasLanguageOverride = localeForLanguageMode(languageMode) != null;
-
-        // Nothing to override — return the original context so no config
-        // snapshot is taken and the system state propagates freely.
-        if (!hasThemeOverride && !hasLanguageOverride) {
-            return base;
-        }
-
         Configuration config = new Configuration(base.getResources().getConfiguration());
 
+        // Theme -- explicit dark or light wins; otherwise leave untouched so the
+        // system setting propagates.
         if (THEME_DARK.equals(themeMode)) {
             config.uiMode = (config.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
                     | Configuration.UI_MODE_NIGHT_YES;
@@ -146,8 +139,8 @@ final class InstallerPreferences {
                     | Configuration.UI_MODE_NIGHT_NO;
         }
 
-        // Language — only override when explicitly set; otherwise leave
-        // unset so the OS locale propagates.
+        // Language -- only override when explicitly set; otherwise leave unset
+        // so the OS locale propagates. Never mutate the base Resources.
         Locale locale = localeForLanguageMode(languageMode);
         if (locale != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -159,8 +152,11 @@ final class InstallerPreferences {
                 Locale.setDefault(locale);
                 config.locale = locale;
             }
-            base.getResources().updateConfiguration(config, base.getResources().getDisplayMetrics());
         }
+
+        // Always wrap -- even when both are "system" -- so that a
+        // clean ConfigurationContext is returned and no stale overrides
+        // from a previous createConfigurationContext() leak through.
         return base.createConfigurationContext(config);
     }
 }

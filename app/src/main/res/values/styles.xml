@@ -155,4 +155,13 @@
     <style name="Widget.OpenJbd" />
 
     <style name="Widget.OpenJbd.SecondaryPanel" parent="Widget.Installer.SecondaryPanel" />
+
+    <style name="TextAppearance.Installer.AboutTitle" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.Installer.AboutBody" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
 </resources>

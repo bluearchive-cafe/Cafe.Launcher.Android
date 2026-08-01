@@ -132,4 +132,53 @@
         <item>Traditional Chinese</item>
         <item>English</item>
     </string-array>
+
+    <!-- Install mode settings -->
+    <string name="settings_group_install_method">Install method</string>
+    <string name="settings_install_mode_label">Install mode</string>
+    <string name="settings_install_mode_desc_system">Use the standard Android package installer. Works on all devices but may require granting "Install unknown apps" permission.</string>
+    <string name="settings_install_mode_desc_shizuku">Use Shizuku to install with ADB/root identity. Bypasses system permission dialogs.\n\nRequires Shizuku to be installed and running.</string>
+    <string name="settings_install_mode_desc_root">Use root (su) to install directly. Bypasses all permission dialogs.\n\nRequires a rooted device with a superuser app.</string>
+    <string-array name="install_mode_options">
+        <item>System</item>
+        <item>Shizuku</item>
+        <item>Root</item>
+    </string-array>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_dark">Always on</string>
+    <string name="settings_theme_light">Always off</string>
+    <string name="settings_language_system">Follow system</string>
+    <string name="settings_language_zh_hans">Simplified Chinese</string>
+    <string name="settings_language_zh_hant">Traditional Chinese</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_install_mode_system">System</string>
+    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_root">Root</string>
+    <string name="settings_install_mode_unavailable_title">Install mode unavailable</string>
+    <string name="settings_install_mode_unavailable_shizuku">Shizuku is not running or permission has not been granted. Please start Shizuku and grant permission to this app.</string>
+    <string name="settings_install_mode_unavailable_root">Root access is not available. Make sure your device is rooted and the superuser app has granted permission.</string>
+    <string name="settings_install_mode_request_shizuku_permission">Grant Shizuku permission</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_description">Blue Cafe Installer downloads and installs the game via CDN with multiple install backends, including Shizuku and Root support.</string>
+    <string name="about_item_app_version">App version</string>
+    <string name="about_item_source_code">Source code</string>
+    <string name="about_item_licenses">Licenses</string>
+    <string name="about_version_unknown">Unknown</string>
+
+    <!-- Licenses -->
+    <string name="licenses_title">Licenses</string>
+    <string name="license_mit">MIT License</string>
+    <string name="license_apache_2">Apache License 2.0</string>
+    <string name="license_item_app">Blue Cafe Installer</string>
+    <string name="license_item_material_components">Material Components for Android</string>
+    <string name="license_item_androidx_activity">AndroidX Activity</string>
+    <string name="license_item_shizuku">Shizuku</string>
+    <string name="license_item_libsu">libsu</string>
+
+    <!-- Shared -->
+    <string name="action_back">Back</string>
+    <string name="setting_about">About</string>
+    <string name="setting_about_subtitle">App version and project repository</string>
 </resources>

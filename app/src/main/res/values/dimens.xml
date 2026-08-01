@@ -25,4 +25,5 @@
     <dimen name="top_app_bar_height">56dp</dimen>
     <dimen name="list_top_app_bar_height">72dp</dimen>
     <dimen name="placeholder_illustration_size">88dp</dimen>
+    <dimen name="about_icon_size">104dp</dimen>
 </resources>

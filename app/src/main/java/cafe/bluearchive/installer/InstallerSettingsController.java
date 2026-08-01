@@ -1,13 +1,22 @@
 package cafe.bluearchive.installer;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 
 import rikka.shizuku.Shizuku;
@@ -15,45 +24,37 @@ import rikka.shizuku.Shizuku;
 final class InstallerSettingsController {
 
     private final Activity activity;
+    private final View themeRow;
+    private final View languageRow;
+    private final View installModeRow;
+    private final View aboutRow;
     private final TextView packageNameView;
     private final TextView downloadUrlView;
     private final TextView installerVersionView;
-    private final TextView themeValueView;
-    private final TextView languageValueView;
-    private final Spinner themeSpinner;
-    private final Spinner languageSpinner;
-    private final TextView installModeValueView;
-    private final Spinner installModeSpinner;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     // Holds state for a pending Shizuku permission request.
     private InstallMode pendingShizukuMode;
-    private int pendingShizukuPosition;
-    private ArrayAdapter<CharSequence> pendingShizukuAdapter;
     private Shizuku.OnRequestPermissionResultListener shizukuPermissionListener;
     private Shizuku.OnBinderReceivedListener binderReceivedListener;
     private Shizuku.OnBinderDeadListener binderDeadListener;
 
     InstallerSettingsController(Activity activity,
+                                View themeRow,
+                                View languageRow,
+                                View installModeRow,
+                                View aboutRow,
                                 TextView packageNameView,
                                 TextView downloadUrlView,
-                                TextView installerVersionView,
-                                TextView themeValueView,
-                                TextView languageValueView,
-                                Spinner themeSpinner,
-                                Spinner languageSpinner,
-                                TextView installModeValueView,
-                                Spinner installModeSpinner) {
+                                TextView installerVersionView) {
         this.activity = activity;
+        this.themeRow = themeRow;
+        this.languageRow = languageRow;
+        this.installModeRow = installModeRow;
+        this.aboutRow = aboutRow;
         this.packageNameView = packageNameView;
         this.downloadUrlView = downloadUrlView;
         this.installerVersionView = installerVersionView;
-        this.themeValueView = themeValueView;
-        this.languageValueView = languageValueView;
-        this.themeSpinner = themeSpinner;
-        this.languageSpinner = languageSpinner;
-        this.installModeValueView = installModeValueView;
-        this.installModeSpinner = installModeSpinner;
     }
 
     void bind(String packageName, String downloadUrl, String versionName, int versionCode) {
@@ -68,24 +69,10 @@ final class InstallerSettingsController {
                     R.string.settings_version_format, versionName, versionCode));
         }
 
-        bindPreferenceSpinner(
-                themeSpinner,
-                themeValueView,
-                R.array.theme_mode_options,
-                InstallerPreferences.themeMode(activity),
-                InstallerPreferences::themeModeToIndex,
-                InstallerPreferences::indexToThemeMode,
-                InstallerPreferences.PREF_THEME_MODE);
-        bindPreferenceSpinner(
-                languageSpinner,
-                languageValueView,
-                R.array.language_options,
-                InstallerPreferences.languageMode(activity),
-                InstallerPreferences::languageModeToIndex,
-                InstallerPreferences::indexToLanguageMode,
-                InstallerPreferences.PREF_LANGUAGE_MODE);
-
-        bindInstallModeSpinner();
+        bindThemeRow();
+        bindLanguageRow();
+        bindInstallModeRow();
+        bindAboutRow();
     }
 
     /**
@@ -106,19 +93,82 @@ final class InstallerSettingsController {
         }
     }
 
-    private void bindInstallModeSpinner() {
-        if (installModeSpinner == null) return;
+    private void bindThemeRow() {
+        if (themeRow == null) return;
 
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-                activity, R.array.install_mode_options,
-                android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        installModeSpinner.setAdapter(adapter);
+        ImageView icon = themeRow.findViewById(R.id.settingIcon);
+        TextView title = themeRow.findViewById(R.id.settingTitle);
+        TextView subtitle = themeRow.findViewById(R.id.settingSubtitle);
+        ImageView chevron = themeRow.findViewById(R.id.settingChevron);
 
-        InstallMode currentMode = InstallerPreferences.installMode(activity);
-        int selectedIndex = InstallerPreferences.installModeToIndex(currentMode);
-        installModeSpinner.setSelection(selectedIndex, false);
-        updateInstallModeValueText(adapter, selectedIndex);
+        icon.setImageResource(R.drawable.ic_brightness_medium_24);
+        icon.setContentDescription(activity.getString(R.string.settings_theme_label));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.settings_theme_label);
+        updateThemeSubtitle(subtitle);
+        chevron.setVisibility(View.VISIBLE);
+
+        themeRow.setOnClickListener(view -> showThemeMenu());
+    }
+
+    private void updateThemeSubtitle(TextView subtitle) {
+        if (subtitle == null) return;
+        String value = InstallerPreferences.themeMode(activity);
+        if (InstallerPreferences.THEME_DARK.equals(value)) {
+            subtitle.setText(R.string.settings_theme_dark);
+        } else if (InstallerPreferences.THEME_LIGHT.equals(value)) {
+            subtitle.setText(R.string.settings_theme_light);
+        } else {
+            subtitle.setText(R.string.settings_theme_system);
+        }
+    }
+
+    private void bindLanguageRow() {
+        if (languageRow == null) return;
+
+        ImageView icon = languageRow.findViewById(R.id.settingIcon);
+        TextView title = languageRow.findViewById(R.id.settingTitle);
+        TextView subtitle = languageRow.findViewById(R.id.settingSubtitle);
+        ImageView chevron = languageRow.findViewById(R.id.settingChevron);
+
+        icon.setImageResource(R.drawable.ic_language_24);
+        icon.setContentDescription(activity.getString(R.string.settings_language_label));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.settings_language_label);
+        updateLanguageSubtitle(subtitle);
+        chevron.setVisibility(View.VISIBLE);
+
+        languageRow.setOnClickListener(view -> showLanguageMenu());
+    }
+
+    private void updateLanguageSubtitle(TextView subtitle) {
+        if (subtitle == null) return;
+        String value = InstallerPreferences.languageMode(activity);
+        if (InstallerPreferences.LANGUAGE_ZH_HANS.equals(value)) {
+            subtitle.setText(R.string.settings_language_zh_hans);
+        } else if (InstallerPreferences.LANGUAGE_ZH_HANT.equals(value)) {
+            subtitle.setText(R.string.settings_language_zh_hant);
+        } else if (InstallerPreferences.LANGUAGE_EN.equals(value)) {
+            subtitle.setText(R.string.settings_language_en);
+        } else {
+            subtitle.setText(R.string.settings_language_system);
+        }
+    }
+
+    private void bindInstallModeRow() {
+        if (installModeRow == null) return;
+
+        ImageView icon = installModeRow.findViewById(R.id.settingIcon);
+        TextView title = installModeRow.findViewById(R.id.settingTitle);
+        TextView subtitle = installModeRow.findViewById(R.id.settingSubtitle);
+        ImageView chevron = installModeRow.findViewById(R.id.settingChevron);
+
+        icon.setImageResource(R.drawable.ic_settings_24);
+        icon.setContentDescription(activity.getString(R.string.settings_install_mode_label));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.settings_install_mode_label);
+        updateInstallModeSubtitle(subtitle);
+        chevron.setVisibility(View.VISIBLE);
 
         // Binder lifecycle — when Shizuku dies while settings is open, clear
         // any pending permission state so the UI stays consistent.
@@ -135,46 +185,120 @@ final class InstallerSettingsController {
                     shizukuPermissionListener = null;
                 }
                 pendingShizukuMode = null;
-                pendingShizukuAdapter = null;
             });
         };
         Shizuku.addBinderDeadListener(binderDeadListener);
 
-        installModeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            private boolean isInitialSelection = true;
+        installModeRow.setOnClickListener(view -> showInstallModeMenu());
+    }
 
-            @Override
-            public void onItemSelected(AdapterView<?> parent, android.view.View view,
-                                       int position, long id) {
-                if (isInitialSelection) {
-                    isInitialSelection = false;
-                    return;
-                }
+    private void updateInstallModeSubtitle(TextView subtitle) {
+        if (subtitle == null) return;
+        InstallMode mode = InstallerPreferences.installMode(activity);
+        if (mode == InstallMode.SHIZUKU) {
+            subtitle.setText(R.string.settings_install_mode_shizuku);
+        } else if (mode == InstallMode.ROOT) {
+            subtitle.setText(R.string.settings_install_mode_root);
+        } else {
+            subtitle.setText(R.string.settings_install_mode_system);
+        }
+    }
 
-                InstallMode selectedMode = InstallerPreferences.indexToInstallMode(position);
-                InstallMode currentMode = InstallerPreferences.installMode(activity);
+    private void bindAboutRow() {
+        if (aboutRow == null) return;
 
-                if (selectedMode == currentMode) return;
+        ImageView icon = aboutRow.findViewById(R.id.settingIcon);
+        TextView title = aboutRow.findViewById(R.id.settingTitle);
+        TextView subtitle = aboutRow.findViewById(R.id.settingSubtitle);
+        ImageView chevron = aboutRow.findViewById(R.id.settingChevron);
 
-                // Validate availability for privileged modes before persisting.
-                if (selectedMode == InstallMode.SHIZUKU) {
-                    validateShizukuAndSave(currentMode, selectedMode, position, adapter);
-                } else if (selectedMode == InstallMode.ROOT) {
-                    validateRootAndSave(currentMode, selectedMode, position, adapter);
-                } else {
-                    // System mode is always available.
-                    persistAndRecreate(selectedMode, position, adapter);
-                }
-            }
+        icon.setImageResource(R.drawable.ic_info_24);
+        icon.setContentDescription(activity.getString(R.string.setting_about));
+        icon.setVisibility(View.VISIBLE);
+        title.setText(R.string.setting_about);
+        subtitle.setText(R.string.setting_about_subtitle);
+        chevron.setVisibility(View.VISIBLE);
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
+        aboutRow.setOnClickListener(view ->
+                activity.startActivity(new Intent(activity, AboutActivity.class)));
+    }
+
+    // ── Theme popup ──────────────────────────────────────────────
+
+    private void showThemeMenu() {
+        String current = InstallerPreferences.themeMode(activity);
+        String[] labels = {
+                activity.getString(R.string.settings_theme_system),
+                activity.getString(R.string.settings_theme_dark),
+                activity.getString(R.string.settings_theme_light)
+        };
+        String[] values = {
+                InstallerPreferences.THEME_SYSTEM,
+                InstallerPreferences.THEME_DARK,
+                InstallerPreferences.THEME_LIGHT
+        };
+        showMenu(themeRow, current, labels, values, value -> {
+            InstallerPreferences.save(activity, InstallerPreferences.PREF_THEME_MODE, value);
+            TextView subtitle = themeRow.findViewById(R.id.settingSubtitle);
+            updateThemeSubtitle(subtitle);
+            activity.recreate();
+        });
+    }
+
+    // ── Language popup ───────────────────────────────────────────
+
+    private void showLanguageMenu() {
+        String current = InstallerPreferences.languageMode(activity);
+        String[] labels = {
+                activity.getString(R.string.settings_language_system),
+                activity.getString(R.string.settings_language_zh_hans),
+                activity.getString(R.string.settings_language_zh_hant),
+                activity.getString(R.string.settings_language_en)
+        };
+        String[] values = {
+                InstallerPreferences.LANGUAGE_SYSTEM,
+                InstallerPreferences.LANGUAGE_ZH_HANS,
+                InstallerPreferences.LANGUAGE_ZH_HANT,
+                InstallerPreferences.LANGUAGE_EN
+        };
+        showMenu(languageRow, current, labels, values, value -> {
+            InstallerPreferences.save(activity, InstallerPreferences.PREF_LANGUAGE_MODE, value);
+            TextView subtitle = languageRow.findViewById(R.id.settingSubtitle);
+            updateLanguageSubtitle(subtitle);
+            activity.recreate();
+        });
+    }
+
+    // ── Install mode popup ───────────────────────────────────────
+
+    private void showInstallModeMenu() {
+        InstallMode current = InstallerPreferences.installMode(activity);
+        String currentValue = InstallerPreferences.installModeToString(current);
+        String[] labels = {
+                activity.getString(R.string.settings_install_mode_system),
+                activity.getString(R.string.settings_install_mode_shizuku),
+                activity.getString(R.string.settings_install_mode_root)
+        };
+        String[] values = {
+                InstallerPreferences.INSTALL_MODE_SYSTEM,
+                InstallerPreferences.INSTALL_MODE_SHIZUKU,
+                InstallerPreferences.INSTALL_MODE_ROOT
+        };
+        showMenu(installModeRow, currentValue, labels, values, value -> {
+            InstallMode selectedMode = InstallerPreferences.installModeFromString(value);
+            if (selectedMode == current) return;
+
+            if (selectedMode == InstallMode.SHIZUKU) {
+                validateShizukuAndSave(current, selectedMode);
+            } else if (selectedMode == InstallMode.ROOT) {
+                validateRootAndSave(current, selectedMode);
+            } else {
+                persistAndRecreate(selectedMode);
             }
         });
     }
 
-    private void validateShizukuAndSave(InstallMode currentMode, InstallMode selectedMode,
-                                        int position, ArrayAdapter<CharSequence> adapter) {
+    private void validateShizukuAndSave(InstallMode currentMode, InstallMode selectedMode) {
         try {
             if (!Shizuku.pingBinder()) {
                 showUnavailableAndRevert(currentMode,
@@ -188,13 +312,11 @@ final class InstallerSettingsController {
             }
             int permission = Shizuku.checkSelfPermission();
             if (permission == PackageManager.PERMISSION_GRANTED) {
-                persistAndRecreate(selectedMode, position, adapter);
+                persistAndRecreate(selectedMode);
             } else {
                 // Register a listener that fires when the user grants permission
                 // via the Shizuku permission dialog.
                 pendingShizukuMode = selectedMode;
-                pendingShizukuPosition = position;
-                pendingShizukuAdapter = adapter;
 
                 if (shizukuPermissionListener != null) {
                     Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener);
@@ -203,14 +325,12 @@ final class InstallerSettingsController {
                     mainHandler.post(() -> {
                         if (pendingShizukuMode == null) return;
                         if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                            persistAndRecreate(pendingShizukuMode,
-                                    pendingShizukuPosition, pendingShizukuAdapter);
+                            persistAndRecreate(pendingShizukuMode);
                         } else {
                             showUnavailableAndRevert(currentMode,
                                     activity.getString(R.string.settings_install_mode_unavailable_shizuku));
                         }
                         pendingShizukuMode = null;
-                        pendingShizukuAdapter = null;
                     });
                 };
                 Shizuku.addRequestPermissionResultListener(shizukuPermissionListener);
@@ -222,8 +342,7 @@ final class InstallerSettingsController {
         }
     }
 
-    private void validateRootAndSave(InstallMode currentMode, InstallMode selectedMode,
-                                     int position, ArrayAdapter<CharSequence> adapter) {
+    private void validateRootAndSave(InstallMode currentMode, InstallMode selectedMode) {
         // Perform a quick root check using libsu.
         new Thread(() -> {
             try {
@@ -240,7 +359,7 @@ final class InstallerSettingsController {
 
                 mainHandler.post(() -> {
                     if (isRoot) {
-                        persistAndRecreate(selectedMode, position, adapter);
+                        persistAndRecreate(selectedMode);
                     } else {
                         showUnavailableAndRevert(currentMode,
                                 activity.getString(R.string.settings_install_mode_unavailable_root));
@@ -260,79 +379,75 @@ final class InstallerSettingsController {
                 .setTitle(R.string.settings_install_mode_unavailable_title)
                 .setMessage(message)
                 .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    int revertIndex = InstallerPreferences.installModeToIndex(currentMode);
-                    installModeSpinner.setSelection(revertIndex, false);
+                    updateInstallModeSubtitle(
+                            installModeRow.findViewById(R.id.settingSubtitle));
                 })
                 .setOnDismissListener(dialog -> {
-                    int revertIndex = InstallerPreferences.installModeToIndex(currentMode);
-                    installModeSpinner.setSelection(revertIndex, false);
+                    updateInstallModeSubtitle(
+                            installModeRow.findViewById(R.id.settingSubtitle));
                 })
                 .show();
     }
 
-    private void persistAndRecreate(InstallMode mode, int position,
-                                    ArrayAdapter<CharSequence> adapter) {
+    private void persistAndRecreate(InstallMode mode) {
         String value = InstallerPreferences.installModeToString(mode);
-        if (InstallerPreferences.isStoredValue(activity, InstallerPreferences.PREF_INSTALL_MODE, value)) {
+        if (InstallerPreferences.isStoredValue(activity,
+                InstallerPreferences.PREF_INSTALL_MODE, value)) {
             return;
         }
         InstallerPreferences.save(activity, InstallerPreferences.PREF_INSTALL_MODE, value);
-        updateInstallModeValueText(adapter, position);
+        updateInstallModeSubtitle(installModeRow.findViewById(R.id.settingSubtitle));
         activity.recreate();
     }
 
-    private void updateInstallModeValueText(ArrayAdapter<CharSequence> adapter, int position) {
-        if (installModeValueView == null || position < 0 || position >= adapter.getCount()) return;
-        installModeValueView.setText(adapter.getItem(position));
-    }
+    // ── Popup menu ───────────────────────────────────────────────
 
-    private void bindPreferenceSpinner(Spinner spinner, TextView valueView, int labelsResId,
-                                       String currentValue, PreferenceIndexMapper toIndex,
-                                       PreferenceValueMapper toValue, String preferenceKey) {
-        if (spinner == null) return;
+    @SuppressLint("InflateParams")
+    private void showMenu(View anchor, String current, String[] labels, String[] values,
+                          final ChoiceHandler handler) {
+        Context context = activity;
+        LinearLayout menuView = (LinearLayout) LayoutInflater.from(context)
+                .inflate(R.layout.popup_setting_menu, null, false);
+        PopupWindow popupWindow = new PopupWindow(menuView,
+                dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        popupWindow.setBackgroundDrawable(
+                new ColorDrawable(context.getColor(R.color.surface_elevation_8)));
+        popupWindow.setOutsideTouchable(true);
+        popupWindow.setElevation(dp(8));
 
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
-                activity, labelsResId, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-
-        int selectedIndex = toIndex.indexFor(currentValue);
-        spinner.setSelection(selectedIndex, false);
-        updateValueText(valueView, adapter, selectedIndex);
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            private boolean isInitialSelection = true;
-
-            @Override
-            public void onItemSelected(AdapterView<?> parent, android.view.View view,
-                                       int position, long id) {
-                if (isInitialSelection) {
-                    isInitialSelection = false;
-                    return;
+        int selectedIndex = 0;
+        for (int i = 0; i < values.length; i++) {
+            String value = values[i];
+            TextView item = (TextView) LayoutInflater.from(context)
+                    .inflate(R.layout.row_setting_menu_item, menuView, false);
+            item.setText(labels[i]);
+            if (value.equals(current)) {
+                selectedIndex = i;
+                item.setBackgroundResource(R.drawable.setting_menu_item_selected);
+                item.setTextColor(context.getColor(R.color.primary));
+            }
+            item.setOnClickListener(view -> {
+                popupWindow.dismiss();
+                if (!value.equals(current)) {
+                    handler.onChoice(value);
                 }
-                updateValueText(valueView, adapter, position);
-                String value = toValue.valueFor(position);
-                if (InstallerPreferences.isStoredValue(activity, preferenceKey, value)) return;
-                InstallerPreferences.save(activity, preferenceKey, value);
-                activity.recreate();
-            }
+            });
+            menuView.addView(item);
+        }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
-        });
+        int verticalOffset = -anchor.getHeight()
+                - dp(8)
+                - (selectedIndex * dp(48))
+                + ((anchor.getHeight() - dp(48)) / 2);
+        int horizontalOffset = dp(24) + dp(16) + dp(16); // icon + margin, align popup text with row title
+        popupWindow.showAsDropDown(anchor, horizontalOffset, verticalOffset);
     }
 
-    private static void updateValueText(TextView valueView, ArrayAdapter<CharSequence> adapter,
-                                        int position) {
-        if (valueView == null || position < 0 || position >= adapter.getCount()) return;
-        valueView.setText(adapter.getItem(position));
+    private int dp(int value) {
+        return Math.round(value * activity.getResources().getDisplayMetrics().density);
     }
 
-    private interface PreferenceIndexMapper {
-        int indexFor(String value);
-    }
-
-    private interface PreferenceValueMapper {
-        String valueFor(int index);
+    private interface ChoiceHandler {
+        void onChoice(String value);
     }
 }

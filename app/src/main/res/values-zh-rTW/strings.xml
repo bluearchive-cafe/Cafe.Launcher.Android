@@ -146,8 +146,41 @@
         <item>Shizuku</item>
         <item>Root</item>
     </string-array>
+    <string name="settings_theme_system">跟隨系統</string>
+    <string name="settings_theme_dark">總是開啟</string>
+    <string name="settings_theme_light">總是關閉</string>
+    <string name="settings_language_system">跟隨系統</string>
+    <string name="settings_language_zh_hans">简体中文</string>
+    <string name="settings_language_zh_hant">繁體中文</string>
+    <string name="settings_language_en">English</string>
+    <string name="settings_install_mode_system">系統</string>
+    <string name="settings_install_mode_shizuku">Shizuku</string>
+    <string name="settings_install_mode_root">Root</string>
     <string name="settings_install_mode_unavailable_title">安裝模式不可用</string>
     <string name="settings_install_mode_unavailable_shizuku">Shizuku 未執行或未授權。請啟動 Shizuku 並授權此應用程式。</string>
     <string name="settings_install_mode_unavailable_root">Root 權限不可用。請確保裝置已 Root 且超級使用者應用程式已授權。</string>
     <string name="settings_install_mode_request_shizuku_permission">授予 Shizuku 權限</string>
+
+    <!-- 關於 -->
+    <string name="about_title">關於</string>
+    <string name="about_description">蔚藍咖啡廳安裝器透過 CDN 下載並安裝遊戲，支援多種安裝後端，包括 Shizuku 和 Root 模式。</string>
+    <string name="about_item_app_version">應用程式版本</string>
+    <string name="about_item_source_code">原始碼</string>
+    <string name="about_item_licenses">開放原始碼授權</string>
+    <string name="about_version_unknown">未知</string>
+
+    <!-- 開放原始碼授權 -->
+    <string name="licenses_title">開放原始碼授權</string>
+    <string name="license_mit">MIT 授權條款</string>
+    <string name="license_apache_2">Apache 授權條款 2.0</string>
+    <string name="license_item_app">蔚藍咖啡廳安裝器</string>
+    <string name="license_item_material_components">Material Components for Android</string>
+    <string name="license_item_androidx_activity">AndroidX Activity</string>
+    <string name="license_item_shizuku">Shizuku</string>
+    <string name="license_item_libsu">libsu</string>
+
+    <!-- 通用 -->
+    <string name="action_back">返回</string>
+    <string name="setting_about">關於</string>
+    <string name="setting_about_subtitle">應用程式版本和專案存放庫</string>
 </resources>

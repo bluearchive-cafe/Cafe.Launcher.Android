@@ -136,15 +136,13 @@ public final class InstallerActivity extends ComponentActivity {
     private View installContent;
     private View helpContent;
     private View settingsContent;
-    private TextView settingsPackageName;
-    private TextView settingsDownloadUrl;
+    private View settingsPackageName;
+    private View settingsDownloadUrl;
     private TextView settingsInstallerVersion;
-    private TextView themeValueText;
-    private TextView languageValueText;
-    private Spinner themeSpinner;
-    private Spinner languageSpinner;
-    private TextView installModeValueText;
-    private Spinner installModeSpinner;
+    private View settingsThemeRow;
+    private View settingsLanguageRow;
+    private View settingsInstallModeRow;
+    private View settingsAboutRow;
 
     // ── State ──────────────────────────────────────────────────
 
@@ -190,6 +188,7 @@ public final class InstallerActivity extends ComponentActivity {
         // Draw behind system bars and apply their insets to the app chrome so
         // fixed-height bars keep their content out of status/navigation areas.
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        SystemBars.applyAppBars(this);
 
         setContentView(R.layout.activity_installer);
         bindViews();
@@ -445,12 +444,10 @@ public final class InstallerActivity extends ComponentActivity {
         settingsPackageName = findViewById(R.id.settingsPackageName);
         settingsDownloadUrl = findViewById(R.id.settingsDownloadUrl);
         settingsInstallerVersion = findViewById(R.id.settingsInstallerVersion);
-        themeValueText = findViewById(R.id.themeValueText);
-        languageValueText = findViewById(R.id.languageValueText);
-        themeSpinner = findViewById(R.id.themeSpinner);
-        languageSpinner = findViewById(R.id.languageSpinner);
-        installModeValueText = findViewById(R.id.installModeValueText);
-        installModeSpinner = findViewById(R.id.installModeSpinner);
+        settingsThemeRow = findViewById(R.id.settingsThemeRow);
+        settingsLanguageRow = findViewById(R.id.settingsLanguageRow);
+        settingsInstallModeRow = findViewById(R.id.settingsInstallModeRow);
+        settingsAboutRow = findViewById(R.id.settingsAboutRow);
         bindSettingsContent();
         ViewCompat.setAccessibilityHeading(titleText, true);
     }
@@ -518,15 +515,13 @@ public final class InstallerActivity extends ComponentActivity {
     private void bindSettingsContent() {
         settingsController = new InstallerSettingsController(
                 this,
-                settingsPackageName,
-                settingsDownloadUrl,
-                settingsInstallerVersion,
-                themeValueText,
-                languageValueText,
-                themeSpinner,
-                languageSpinner,
-                installModeValueText,
-                installModeSpinner);
+                settingsThemeRow,
+                settingsLanguageRow,
+                settingsInstallModeRow,
+                settingsAboutRow,
+                (TextView) settingsPackageName,
+                (TextView) settingsDownloadUrl,
+                settingsInstallerVersion);
         settingsController.bind(
                 GAME_PACKAGE_NAME,
                 APKS_DOWNLOAD_URL,
