@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:paddingBottom="@dimen/content_bottom_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
+
+        <TextView
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_interface" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/space_6"
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
+
+            <include
+                android:id="@+id/settingsThemeRow"
+                layout="@layout/row_installer_setting_item" />
+
+            <include
+                android:id="@+id/settingsLanguageRow"
+                layout="@layout/row_installer_setting_item" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_install_method" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/space_6"
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
+
+            <include
+                android:id="@+id/settingsInstallModeRow"
+                layout="@layout/row_installer_setting_item" />
+
+            <include
+                android:id="@+id/settingsShizukuStatusRow"
+                layout="@layout/row_installer_setting_item" />
+
+            <include
+                android:id="@+id/settingsRootStatusRow"
+                layout="@layout/row_installer_setting_item" />
+        </LinearLayout>
+
+        <TextView
+            style="@style/OpenJbdSectionTitle"
+            android:paddingStart="@dimen/space_16"
+            android:paddingEnd="@dimen/space_16"
+            android:text="@string/settings_group_about" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:divider="@drawable/divider_card_stroke"
+            android:orientation="vertical"
+            android:showDividers="middle">
+
+            <include
+                android:id="@+id/settingsAboutRow"
+                layout="@layout/row_installer_setting_item" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

@@ -508,7 +508,7 @@ public final class InstallerActivity extends ComponentActivity {
                 bottomBarInsets.apply(0, systemBars.bottom);
             }
             if (navigationViewInsets != null) {
-                navigationViewInsets.apply(systemBars.top, systemBars.bottom);
+                navigationViewInsets.apply(0, systemBars.bottom);
             }
 
             return windowInsets;
@@ -542,7 +542,7 @@ public final class InstallerActivity extends ComponentActivity {
             if (view == null) return;
             view.setPadding(paddingLeft, paddingTop + topInset, paddingRight, paddingBottom + bottomInset);
 
-            if (height >= 0) {
+            if (height > 0) {
                 ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
                 if (layoutParams != null) {
                     layoutParams.height = height + topInset + bottomInset;

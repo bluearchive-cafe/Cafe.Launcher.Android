@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="content_horizontal_padding">40dp</dimen>
+    <dimen name="content_bottom_padding">72dp</dimen>
+    <dimen name="navigation_view_width">320dp</dimen>
+</resources>

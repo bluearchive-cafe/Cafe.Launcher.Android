@@ -7,11 +7,11 @@
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigationView"
         style="@style/Widget.Installer.NavigationView"
-        android:layout_width="320dp"
+        android:layout_width="@dimen/navigation_view_width"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/topAppBar"
         app:menu="@menu/nav_installer" />
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -20,7 +20,7 @@
         android:layout_width="0dp"
         android:layout_height="@dimen/top_app_bar_height"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/navigationView"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:title="@string/app_name" />
 

@@ -12,6 +12,67 @@ $DistributionDir = Join-Path $ArtifactsDir "distribution"
 $GeneratedDir = Join-Path $ArtifactsDir "generated"
 $ApkPath = Join-Path $RootDir "app\build\outputs\apk\release\app-release.apk"
 
+function Find-ApkSigner {
+    $sdkRoot = $env:ANDROID_HOME
+    if ([string]::IsNullOrWhiteSpace($sdkRoot)) {
+        $sdkRoot = $env:ANDROID_SDK_ROOT
+    }
+    if ([string]::IsNullOrWhiteSpace($sdkRoot)) {
+        throw "ANDROID_HOME or ANDROID_SDK_ROOT is required to locate apksigner."
+    }
+
+    $buildToolsDir = Join-Path $sdkRoot "build-tools"
+    if (-not (Test-Path -LiteralPath $buildToolsDir -PathType Container)) {
+        throw "Android build-tools directory was not found: $buildToolsDir"
+    }
+
+    $apksignerName = if ($IsWindows) { "apksigner.bat" } else { "apksigner" }
+    $candidates = Get-ChildItem -LiteralPath $buildToolsDir -Directory |
+        Sort-Object Name -Descending |
+        ForEach-Object { Join-Path $_.FullName $apksignerName } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+
+    if (-not $candidates -or $candidates.Count -eq 0) {
+        throw "apksigner was not found under $buildToolsDir"
+    }
+    return $candidates[0]
+}
+
+function Test-ApkSignature {
+    param(
+        [Parameter(Mandatory=$true)][string]$ApkPath
+    )
+
+    $apksigner = Find-ApkSigner
+    $verifyOutput = & $apksigner verify --verbose --print-certs $ApkPath 2>&1
+    $exitCode = $LASTEXITCODE
+    $verifyOutput | Out-Host
+    if ($exitCode -ne 0) {
+        throw "APK signature verification failed."
+    }
+
+    $expectedCertSha256 = $env:ANDROID_SIGNING_CERT_SHA256
+    if (-not [string]::IsNullOrWhiteSpace($expectedCertSha256)) {
+        $expectedCertSha256 = ($expectedCertSha256 -replace '[^0-9A-Fa-f]', '').ToLowerInvariant()
+        if ($expectedCertSha256.Length -ne 64) {
+            throw "ANDROID_SIGNING_CERT_SHA256 must contain a 64-character SHA-256 fingerprint."
+        }
+        $actualCertSha256 = $null
+        foreach ($line in $verifyOutput) {
+            if ($line -match 'SHA-256 digest:\s*([0-9A-Fa-f:]+)') {
+                $actualCertSha256 = ($Matches[1] -replace ':', '').ToLowerInvariant()
+                break
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($actualCertSha256)) {
+            throw "Could not read signer certificate SHA-256 from apksigner output."
+        }
+        if ($actualCertSha256 -cne $expectedCertSha256) {
+            throw "APK signer certificate SHA-256 mismatch."
+        }
+    }
+}
+
 $buildFile = Get-Content -Raw -LiteralPath $BuildFilePath
 $versionNameMatches = [regex]::Matches($buildFile, '(?m)^\s*versionName\s*=\s*"([^"]+)"\s*$')
 $versionCodeMatches = [regex]::Matches($buildFile, '(?m)^\s*versionCode\s*=\s*(\d+)\s*$')
@@ -56,6 +117,10 @@ if ($releaseApks.Count -ne 1) {
 }
 
 $ApkPath = $releaseApks[0].FullName
+if ($releaseApks[0].Name -match 'unsigned') {
+    throw "Release APK is unsigned: $($releaseApks[0].Name)"
+}
+Test-ApkSignature -ApkPath $ApkPath
 
 $apkName = "Cafe.Launcher.Android_${Tag}_apk.apk"
 $distributionApkPath = Join-Path $DistributionDir $apkName

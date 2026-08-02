@@ -8,6 +8,24 @@ plugins {
 fun Project.stringProperty(name: String, defaultValue: String): String =
     (findProperty(name) as String?)?.ifBlank { defaultValue } ?: defaultValue
 
+fun Project.signingValue(name: String): String? =
+    (findProperty(name) as String?)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: providers.environmentVariable(name).orNull
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+val signingInputNames = listOf(
+    "ANDROID_SIGNING_KEYSTORE_FILE",
+    "ANDROID_SIGNING_STORE_PASSWORD",
+    "ANDROID_SIGNING_KEY_ALIAS",
+    "ANDROID_SIGNING_KEY_PASSWORD"
+)
+
+fun Project.missingSigningInputs(): List<String> =
+    signingInputNames.filter { signingValue(it).isNullOrEmpty() }
+
 fun javaStringLiteral(value: String): String {
     val escaped = buildString {
         append('"')
@@ -79,6 +97,12 @@ val releaseManifestPublicKey = validateBase64OrEmpty(
     stringProperty("RELEASE_MANIFEST_PUBLIC_KEY", ""),
     "RELEASE_MANIFEST_PUBLIC_KEY")
 
+val signingKeystoreFile = signingValue("ANDROID_SIGNING_KEYSTORE_FILE")
+val signingStorePassword = signingValue("ANDROID_SIGNING_STORE_PASSWORD")
+val signingKeyAlias = signingValue("ANDROID_SIGNING_KEY_ALIAS")
+val signingKeyPassword = signingValue("ANDROID_SIGNING_KEY_PASSWORD")
+val releaseSigningConfigured = missingSigningInputs().isEmpty()
+
 android {
     namespace = "cafe.bluearchive.installer"
     compileSdk = 35
@@ -107,8 +131,22 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(signingKeystoreFile!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -126,6 +164,28 @@ android {
     buildFeatures {
         buildConfig = true
         aidl = true
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseTaskRequested = allTasks.any { task ->
+        val path = task.path.lowercase()
+        path.contains("release") && (
+                path.contains("assemble")
+                        || path.contains("bundle")
+                        || path.contains("package")
+                        || path.contains("sign"))
+    }
+    if (releaseTaskRequested) {
+        val missing = missingSigningInputs()
+        require(missing.isEmpty()) {
+            "Release signing is required. Missing: ${missing.joinToString()}. " +
+                    "Set them as Gradle properties or environment variables."
+        }
+        val keystorePath = signingKeystoreFile!!
+        require(file(keystorePath).isFile) {
+            "Release signing keystore was not found: $keystorePath"
+        }
     }
 }
 

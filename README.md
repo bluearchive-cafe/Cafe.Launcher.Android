@@ -97,6 +97,45 @@ APKS_DOWNLOAD_URL=https://download.bluearchive.cafe/android/latest
 
 产物位于 `app/build/outputs/apk/`。
 
+### Release 签名
+
+Release 构建必须使用 Android 签名密钥；仓库不会保存 keystore 或密码。`assembleRelease` / `Build-Distribution.ps1` 会在缺少签名输入时失败，避免发布 unsigned APK。
+
+本地发布可通过环境变量或用户级 `~/.gradle/gradle.properties` 提供以下值：
+
+```properties
+ANDROID_SIGNING_KEYSTORE_FILE=/absolute/path/release.jks
+ANDROID_SIGNING_STORE_PASSWORD=...
+ANDROID_SIGNING_KEY_ALIAS=...
+ANDROID_SIGNING_KEY_PASSWORD=...
+# 可选：用于 Build-Distribution.ps1 校验签名证书指纹
+ANDROID_SIGNING_CERT_SHA256=0123...abcd
+```
+
+GitHub Actions 的 `Release` workflow 期望在 `release` environment 中配置：
+
+- Secret: `ANDROID_SIGNING_KEYSTORE_BASE64`（keystore 文件的 Base64 内容）
+- Secret: `ANDROID_SIGNING_STORE_PASSWORD`
+- Secret: `ANDROID_SIGNING_KEY_ALIAS`
+- Secret: `ANDROID_SIGNING_KEY_PASSWORD`
+- Variable（可选）: `ANDROID_SIGNING_CERT_SHA256`
+
+生成 Base64 keystore 示例：
+
+```bash
+base64 -w 0 release.jks > release.jks.base64
+```
+
+PowerShell 示例：
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("release.jks")) | Set-Content release.jks.base64 -NoNewline
+```
+
+`ANDROID_SIGNING_CERT_SHA256` 可用 `apksigner verify --verbose --print-certs <apk>` 输出中的 `SHA-256 digest` 获取。直接分发 APK 时，同一应用后续升级必须始终使用同一签名证书；更换证书会导致 Android 拒绝覆盖安装。
+
+注意：这里的 APK 签名密钥不同于 `RELEASE_MANIFEST_PUBLIC_KEY`。后者是安装器运行时校验下载 manifest 的公钥，不是 Android APK 的 keystore。
+
 ## 发布版本
 
 `scripts/Build-Distribution.ps1` 用于准备正式发布产物，流程参考桌面端项目：读取 `app/build.gradle.kts` 中的 `versionName` / `versionCode`，校验发布 tag，构建 Release APK，并将产物整理到 `artifacts/distribution/`。

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:paddingStart="@dimen/content_horizontal_padding"
+    android:paddingTop="@dimen/space_24"
+    android:paddingEnd="@dimen/content_horizontal_padding"
+    android:paddingBottom="@dimen/content_bottom_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
+
+        <ImageView
+            android:id="@+id/statusIcon"
+            android:layout_width="@dimen/icon_size_48"
+            android:layout_height="@dimen/icon_size_48"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_status_info" />
+
+        <TextView
+            android:id="@+id/titleText"
+            style="@style/TextAppearance.Installer.Headline5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_16"
+            android:gravity="center"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/messageText"
+            style="@style/TextAppearance.Installer.Body1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_12"
+            android:gravity="center"
+            android:lineSpacingExtra="4sp"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/supportingText"
+            style="@style/TextAppearance.Installer.Supporting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_16"
+            android:background="@drawable/detail_surface"
+            android:lineSpacingExtra="2sp"
+            android:padding="@dimen/space_16"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="@dimen/space_24"
+            android:contentDescription="@string/cd_progress_indeterminate"
+            android:indeterminate="false"
+            android:indeterminateTint="@color/primary"
+            android:max="100"
+            android:progressBackgroundTint="@color/progress_track"
+            android:progressTint="@color/primary"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/indeterminateBar"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="@dimen/space_24"
+            android:contentDescription="@string/cd_progress_indeterminate"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/primary"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/splitLabel"
+            style="@style/TextAppearance.Installer.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_12"
+            android:accessibilityLiveRegion="polite"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/etaLabel"
+            style="@style/TextAppearance.Installer.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4"
+            android:gravity="center"
+            android:textAlignment="center"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/errorDetail"
+            style="@style/TextAppearance.Installer.Body2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_16"
+            android:background="@drawable/detail_surface"
+            android:fontFamily="monospace"
+            android:padding="@dimen/space_16"
+            android:textIsSelectable="true"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/primaryButton"
+            style="@style/Widget.Installer.Button.Contained"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_24"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/secondaryButton"
+            style="@style/Widget.Installer.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_8"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tertiaryButton"
+            style="@style/Widget.Installer.Button.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_4"
+            android:visibility="gone" />
+    </LinearLayout>
+</ScrollView>

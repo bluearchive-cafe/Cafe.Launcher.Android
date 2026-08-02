@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:paddingStart="@dimen/content_horizontal_padding"
+    android:paddingTop="@dimen/space_24"
+    android:paddingEnd="@dimen/content_horizontal_padding"
+    android:paddingBottom="@dimen/content_bottom_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="@dimen/space_8"
+        android:paddingBottom="@dimen/space_18">
+
+        <TextView
+            style="@style/TextAppearance.Installer.Headline5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/resource_panel_title" />
+
+        <TextView
+            style="@style/TextAppearance.Installer.Body2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_8"
+            android:text="@string/resource_panel_description" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/resourcePanelUidCard"
+            style="@style/Widget.Installer.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_24">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="@dimen/space_16">
+
+                <TextView
+                    style="@style/TextAppearance.Installer.ListItemTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/resource_panel_uid_title" />
+
+                <TextView
+                    android:id="@+id/resourcePanelUidSummary"
+                    style="@style/TextAppearance.Installer.Supporting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_4"
+                    android:accessibilityLiveRegion="polite" />
+
+                <RadioGroup
+                    android:id="@+id/resourcePanelUidSourceGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_12"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/resourcePanelUidSourceAuto"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_target_min"
+                        android:text="@string/resource_panel_uid_source_auto" />
+
+                    <RadioButton
+                        android:id="@+id/resourcePanelUidSourceCustom"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="@dimen/touch_target_min"
+                        android:text="@string/resource_panel_uid_source_custom" />
+                </RadioGroup>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/resourcePanelUidInputLayout"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_8"
+                    android:hint="@string/resource_panel_uid_manual_hint">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/resourcePanelUidInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapCharacters|textNoSuggestions"
+                        android:maxLength="8"
+                        android:singleLine="true" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/resourcePanelUidSaveButton"
+                    style="@style/Widget.Installer.Button.Outlined"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/space_8"
+                    android:text="@string/resource_panel_uid_save" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <LinearLayout
+            android:id="@+id/resourcePanelItems"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_16"
+            android:orientation="vertical">
+
+            <include
+                android:id="@+id/resourcePanelTextItem"
+                layout="@layout/row_resource_panel_item" />
+
+            <include
+                android:id="@+id/resourcePanelVoiceItem"
+                layout="@layout/row_resource_panel_item" />
+
+            <include
+                android:id="@+id/resourcePanelMediaItem"
+                layout="@layout/row_resource_panel_item" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/resourcePanelMessage"
+            style="@style/TextAppearance.Installer.Supporting"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_12"
+            android:accessibilityLiveRegion="polite"
+            android:background="@drawable/detail_surface"
+            android:padding="@dimen/space_16"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/resourcePanelProgress"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="@dimen/space_24"
+            android:contentDescription="@string/cd_progress_indeterminate"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/primary"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/resourcePanelRefreshButton"
+            style="@style/Widget.Installer.Button.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_24"
+            android:text="@string/resource_panel_refresh" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/resourcePanelSaveButton"
+            style="@style/Widget.Installer.Button.Contained"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_8"
+            android:text="@string/resource_panel_save" />
+    </LinearLayout>
+</ScrollView>

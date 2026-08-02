@@ -11,6 +11,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    environment: release
 
     defaults:
       run:
@@ -35,10 +36,28 @@ jobs:
         shell: bash
         run: chmod +x ./gradlew
 
+      - name: Restore release keystore
+        shell: bash
+        env:
+          ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_SIGNING_KEYSTORE_BASE64" ]; then
+            echo "ANDROID_SIGNING_KEYSTORE_BASE64 secret is required" >&2
+            exit 1
+          fi
+          printf '%s' "$ANDROID_SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          chmod 600 "$RUNNER_TEMP/release.keystore"
+
       - name: Run unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
       - name: Build distribution artifacts
+        env:
+          ANDROID_SIGNING_KEYSTORE_FILE: ${{ runner.temp }}/release.keystore
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ vars.ANDROID_SIGNING_CERT_SHA256 }}
         run: .\scripts\Build-Distribution.ps1 -Tag "${{ github.ref_name }}"
 
       - name: Prepare changelog
