@@ -111,8 +111,8 @@ android {
         applicationId = "cafe.bluearchive.installer"
         minSdk = 23
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0-beta.1"
+        versionCode = 2
+        versionName = "1.0.0-beta.2"
 
         // Target game and release metadata. Override via gradle.properties or CLI:
         //   ./gradlew assembleRelease -PGAME_PACKAGE_NAME=com.example.game
